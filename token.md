@@ -19,4 +19,4 @@ Contract Address | TBD |
 
 ---
 
-## P-Bucks - In Game Virtual Currency
+## P-Bucks
