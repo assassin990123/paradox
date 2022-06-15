@@ -13,7 +13,7 @@ The Staking protocol is inspired by the MasterChef and Hex contracts, rewarding 
 Stakes up **25,000,000** of the total supply of $PARA will be awarded a bonus token allocation given by the following formula:
 
 $$
-\displaystyle {Bonus = \frac{Stake * min(Stake , 25M)}{25M}}
+\displaystyle {Reward = \frac{Stake * min(Stake , 25M)}{25M}}
 $$
 
 ---
@@ -23,7 +23,7 @@ $$
 The staking protocol will support stakes between 28 and 2888 days. This means that starting at the 28 day threshold, bonus tokens will be alloted given by the following formula:
 
 $$
-\displaystyle {Bonus = \frac{Stake * (days - 28)}{103} \leq 2* Stake}
+\displaystyle {Reward = \frac{Stake * (days - 28)}{103} \leq 2* Stake}
 $$
 
 Note that the length multiplier increases linearly until the bonus has reached twice as much as the initially staked amount.
@@ -42,18 +42,15 @@ These values will all be upgradeable, and there will be an option to turn off bu
 The user is then credited an equivalent amount of the **P-Save** virtual currency, which is the basis for all staking rewards calculations. Essentially, a virtual pool is used to determine a users share in the pool. A users pending rewards are then calculated by the following formula:
 
 $$
-\displaystyle {Reward = Bonus_a + Bonus_l + \frac{Stake * Share}{Precision}} - Debt
+\displaystyle {Reward_t = Reward_a + Reward_l
 $$
 
 The function variables are defined below:
 
 Variable   | Description
 :---:   | :---:
-Bonus A | Bonus based on the amount staked, defined above.
-Bonus L | Bonus based on the length of the stake, defined above.
-Share   |  Represents the accumulated $PARA per share.
-Precision  | Token Decimal
-Debt | This is a representation of previous stakes that have already been claimed. 
+Reward A | Reward based on the amount staked, defined above.
+Reward L | Reward based on the length of the stake, defined above.
 
 ---
 
