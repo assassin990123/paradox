@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="2.3.0.708591616658">
+    <meta name="turbo-cache-control" content="no-cache" data-turbo-track="reload" data-track-token="2.3.0.708595700022">
 
     <!-- See retype.com -->
     <meta name="generator" content="Retype 2.3.0">
@@ -30,11 +30,11 @@
 
     <script>(function () { var el = document.documentElement, m = localStorage.getItem("doc_theme"), wm = window.matchMedia; if (m === "dark" || (!m && wm && wm("(prefers-color-scheme: dark)").matches)) { el.classList.add("dark") } else { el.classList.remove("dark") } })();</script>
 
-    <link href="../resources/css/retype.css?v=2.3.0.708591616658" rel="stylesheet" />
+    <link href="../resources/css/retype.css?v=2.3.0.708595700022" rel="stylesheet" />
 
-    <script type="text/javascript" src="../resources/js/config.js?v=2.3.0.708591616658" data-turbo-eval="false" defer></script>
+    <script type="text/javascript" src="../resources/js/config.js?v=2.3.0.708595700022" data-turbo-eval="false" defer></script>
     <script type="text/javascript" src="../resources/js/retype.js?v=2.3.0" data-turbo-eval="false" defer></script>
-    <script id="lunr-js" type="text/javascript" src="../resources/js/lunr.js?v=2.3.0.708591616658" data-turbo-eval="false" defer></script>
+    <script id="lunr-js" type="text/javascript" src="../resources/js/lunr.js?v=2.3.0.708595700022" data-turbo-eval="false" defer></script>
     <link href="../resources/css/katex.css?v=2.3.0" rel="stylesheet" />
     <script id="katex-js" type="text/javascript" src="../resources/js/katex.js?v=2.3.0" defer></script>
 </head>
@@ -183,7 +183,8 @@
     </h2>
 </doc-anchor-target>
 <p>Stakes up <strong>25,000,000</strong> of the total supply of $PARA will be awarded a bonus token allocation given by the following formula:</p>
-<div class="math"><pre>\displaystyle {bonus = \frac{stake * min(stake , 25M)}{25M}}</pre></div>
+<div class="math"><pre>\displaystyle {Bonus = \frac{Stake * min(Stake , 25M)}{25M}}</pre></div>
+<hr />
 <doc-anchor-target id="length-multiplier">
     <h2>
         <doc-anchor-trigger class="header-anchor-trigger" to="#length-multiplier">#</doc-anchor-trigger>
@@ -191,7 +192,74 @@
     </h2>
 </doc-anchor-target>
 <p>The staking protocol will support stakes between 28 and 2888 days. This means that starting at the 28 day threshold, bonus tokens will be alloted given by the following formula:</p>
-<div class="math"><pre>\displaystyle {bonus = \frac{stake * (days - 28)}{103}}</pre></div>
+<div class="math"><pre>\displaystyle {Bonus = \frac{Stake * (days - 28)}{103} \leq 2* Stake}</pre></div>
+<p>Note that the length multiplier increases linearly until the bonus has reached twice as much as the initially staked amount.</p>
+<hr />
+<doc-anchor-target id="p-save">
+    <h2>
+        <doc-anchor-trigger class="header-anchor-trigger" to="#p-save">#</doc-anchor-trigger>
+        <span>P-Save</span>
+    </h2>
+</doc-anchor-target>
+<p>When a user stakes $PARA, that stake is distributed throughout the ecosystem.</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input disabled="disabled" type="checkbox" checked="checked" /> 33% is Burned.</li>
+<li class="task-list-item"><input disabled="disabled" type="checkbox" checked="checked" /> 33% is distributed to the rewards pool.</li>
+<li class="task-list-item"><input disabled="disabled" type="checkbox" checked="checked" /> 33% is distributed to the staking pool.</li>
+</ul>
+<p>These values will all be upgradeable, and there will be an option to turn off burn.</p>
+<p>The user is then credited an equivalent amount of the <strong>P-Save</strong> virtual currency, which is the basis for all staking rewards calculations. Essentially, a virtual pool is used to determine a users share in the pool. A users pending rewards are then calculated by the following formula:</p>
+<div class="math"><pre>\displaystyle {Reward = Bonus_a + Bonus_l + \frac{Stake * Share}{Precision}} - Debt</pre></div>
+<p>The function variables are defined below:</p>
+<div class="table-wrapper scrollbar overflow-hidden">
+<table class="comfortable">
+<thead>
+<tr>
+<th style="text-align: center;">Variable</th>
+<th style="text-align: center;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">Bonus A</td>
+<td style="text-align: center;">Bonus based on the amount staked, defined above.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Bonus L</td>
+<td style="text-align: center;">Bonus based on the length of the stake, defined above.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Share</td>
+<td style="text-align: center;">Represents the accumulated $PARA per share.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Precision</td>
+<td style="text-align: center;">Token Decimal</td>
+</tr>
+<tr>
+<td style="text-align: center;">Debt</td>
+<td style="text-align: center;">This is a representation of previous stakes that have already been claimed.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr />
+<doc-anchor-target id="user-flow">
+    <h2>
+        <doc-anchor-trigger class="header-anchor-trigger" to="#user-flow">#</doc-anchor-trigger>
+        <span>User Flow</span>
+    </h2>
+</doc-anchor-target>
+<p>What follows is an example of two users, <strong>Alice</strong> and <strong>Bob</strong>, who both deposit 10 $PARA stakes for 200 days. This example assumes that the contract has enough funds to cover their stakes. Please see the <strong>Mitigating Risks</strong> section for developer thoughts on that.</p>
+<p>Alice and bob will receive a negligible <strong>amount multiplier</strong> but the <strong>length multiplier</strong> bonus will be roughly 1.7 $PARA, or a 17% yield.</p>
+<doc-anchor-target id="mitigating-risks">
+    <h2>
+        <doc-anchor-trigger class="header-anchor-trigger" to="#mitigating-risks">#</doc-anchor-trigger>
+        <span>Mitigating Risks</span>
+    </h2>
+</doc-anchor-target>
+<p>It is entirely possible, without some sort of automated service monitoring the contract, for the staking pool balance to be superceded by a users pending rewards. In this case where the contract can&#x27;t cover the amount, the contract should be intelligent enough to pause operations until more funds are deposited.</p>
+<p>For this reason the developer would recommend making the <strong>$PARA</strong> token inflationary, such that more can be minted in the case that other parts of the ecosystem are not generating enough $PARA flow to the staking contract.</p>
 
                                 
                                 <!-- Required only on API pages -->
