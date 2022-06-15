@@ -42,7 +42,7 @@ These values will all be upgradeable, and there will be an option to turn off bu
 The user is then credited an equivalent amount of the **P-Save** virtual currency, which is the basis for all staking rewards calculations. Essentially, a virtual pool is used to determine a users share in the pool. A users pending rewards are then calculated by the following formula:
 
 $$
-\displaystyle {Reward_t = Reward_a + Reward_l
+\displaystyle {Reward_t = Reward_a + Reward_l}
 $$
 
 The function variables are defined below:
