@@ -2,13 +2,17 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IPARA {
     function mint(address to, uint256 amount) external;
     function burn(uint256 amount) external;
 }
 contract StakePool is AccessControl {
-    // bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    using SafeERC20 for IERC20;
+
+    uint256 private constant HEARTS_PER_HEX = 1e18; // 1e18
 
     // para token
     address internal para;
@@ -25,7 +29,6 @@ contract StakePool is AccessControl {
     uint256 internal constant LPB_D_CAP_DAYS = LPB_D * LPB_D_BONUS_CAP_PERCENT / 100;
 
     /* Stake shares Larger Pays Better bonus constants used by calcStakeShares() */
-    uint256 private constant HEARTS_PER_HEX = 10 ** 16; // 1e16
     uint256 private constant LPB_H_BONUS_PERCENT = 10;
     uint256 private constant LPB_H_CAP_HEX = 25 * 1e6;
     uint256 internal constant LPB_H_CAP_HEARTS = LPB_H_CAP_HEX * HEARTS_PER_HEX;
@@ -57,10 +60,7 @@ contract StakePool is AccessControl {
         uint accParaPerShare; // distribution multiplier
         uint lastRewardTime;
     }
-
-    Pool  virtualPool;
-
-    mapping(address => Pool) public Pools; // token => pool
+    Pool internal virtualPool;
 
     constructor(address _para, uint _rewardsPerSecond) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -82,11 +82,14 @@ contract StakePool is AccessControl {
         /* enforce the maximum stake time */
         require(newStakedDays <= MAX_STAKE_DAYS, "PARA: newStakedDays higher than maximum");
 
-        uint256 newStakeShares = calcStakeShares(newStakedHearts, newStakedDays);
+        Pool memory vPool = updatePool();
+
+        uint256 newStakeShares = _stakeStartBonusHearts(newStakedHearts, newStakedDays);
+        uint256 rewardDebt = (newStakedHearts * vPool.accParaPerShare) / HEARTS_PER_HEX;
 
         // get user position
-        UserPosition memory stake = userPositions[msg.sender];
-        Stake[] storage 
+        UserPosition storage userPosition = userPositions[msg.sender];
+        userPosition.rewardDebt = rewardDebt;
 
         /*
             The startStake timestamp will always be part-way through the current
@@ -94,12 +97,12 @@ contract StakePool is AccessControl {
             stakes align with the same fixed calendar days. The current day is
             already rounded-down, so rounded-up is current day + 1.
         */
-        uint256 newPooledDay = stake.currentDay + 1;
+        uint256 newPooledDay = userPosition.currentDay + 1;
 
         /* Create Stake */
-        uint48 newStakeId = ++stake.lastStakeId;
+        uint48 newStakeId = ++userPosition.lastStakeId;
         _addStake(
-            stake.stakes,
+            userPosition.stakes,
             newStakeId,
             newStakedHearts,
             newStakeShares,
@@ -107,8 +110,14 @@ contract StakePool is AccessControl {
             newStakedDays
         );
 
+        // update pool share
+        virtualPool.totalPooled += newStakeShares;
+
         // burn 33% of the amount
         PARA.burn(newStakedHearts * 33 / 100);
+
+        /* Transfer staked Hearts to contract */
+        IERC20(para).safeTransferFrom(msg.sender, address(this), newStakedHearts);
     }
 
     /**
@@ -116,67 +125,27 @@ contract StakePool is AccessControl {
      * @param newStakedHearts Number of Hearts to stake
      * @param newStakedDays Number of days to stake
      */
-    function calcStakeShares(uint256 newStakedHearts, uint256 newStakedDays)
+    
+    function _stakeStartBonusHearts(uint256 newStakedHearts, uint256 newStakedDays)
         private
         pure
-        returns (uint256)
+        returns (uint256 bonusHearts)
     {
-        /*
-            LONGER PAYS BETTER:
-            If longer than 28 day stake is committed to, each extra day
-            gives bonus shares of approximately 0.0548%, which is approximately 20%
-            extra per year of increased stakelength committed to, but capped to a
-            maximum of 200% extra.
-            extraDays       =  stakedDays - 28
-            longerBonus%    = (extraDays / 364) * 20%
-                            = (extraDays / 364) / 5
-                            =  extraDays / 1820
-                            =  extraDays / LPB_D
-            extraDays       =  longerBonus% * 1820
-            extraDaysCap    =  longerBonusCap% * 1820
-                            =  200% * 1820
-                            =  3640
-                            =  LPB_D_CAP_DAYS
-            longerAmount    =  hearts * longerBonus%
-            LARGER PAYS BETTER:
-            Bonus percentage scaled 0% to 10% for the first 150M HEX of stake.
-            largerBonus%    = (hearts / 150e14) * 10%
-                            = (hearts / 150e14) / 10
-                            =  hearts / 150e15
-            largerAmount    =  hearts * largerBonus%
-            combinedBonus%  =         longerBonus%  +  largerBonus%
-                                        extraWeeks     hearts
-                            =           ----------  +  ------
-                                            260        150e15
-                                extraDays * 150e15     hearts * 1820
-                            =   ------------------  +  -------------
-                                   1820 * 150e15       1820 * 150e15
-                                extraDays * 150e15     hearts * 1820
-                            =   ------------------  +  -------------
-                                  1820 * 150e15        1820 * 150e15
-                                extraDays * 150e15  +  hearts * 1820
-                            =   ------------------------------------
-                                            1820 * 150e15
-            combinedAmount  = hearts * combinedBonus%
-                            = hearts * (extraDays * 150e15  +  hearts * 1820)  / (1820 * 150e15)
-                            = hearts * (extraDays * LPB_H   +  hearts * LPB_D) / (LPB_D * LPB_H)
-            stakeShares     = hearts + combinedAmount
-        */
         uint256 cappedExtraDays = 0;
 
-        /* Must be more than 28 day for Longer-Pays-Better */
-        if (newStakedDays > 28) {
-            cappedExtraDays = newStakedDays <= LPB_D_CAP_DAYS ? newStakedDays - 1 : LPB_D_CAP_DAYS;
+        /* Must be more than 1 day for Longer-Pays-Better */
+        if (newStakedDays > 1) {
+            cappedExtraDays = newStakedDays <= MAX_STAKE_DAYS ? newStakedDays - 1 : MAX_STAKE_DAYS;
         }
 
         uint256 cappedStakedHearts = newStakedHearts <= LPB_H_CAP_HEARTS
             ? newStakedHearts
             : LPB_H_CAP_HEARTS;
 
-        uint256 combinedAmount = cappedExtraDays * LPB_H + cappedStakedHearts * LPB_D;
-        combinedAmount = newStakedHearts * combinedAmount / (LPB_D * LPB_H);
+        bonusHearts = cappedExtraDays * LPB_D + cappedStakedHearts * LPB_H;
+        bonusHearts = newStakedHearts * bonusHearts / (LPB_D * LPB_H);
 
-        return newStakedHearts + combinedAmount;
+        return bonusHearts;
     }
 
     function addPool(uint _rewardsPerSecond) public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -186,6 +155,27 @@ contract StakePool is AccessControl {
             accParaPerShare: 0,
             lastRewardTime: block.timestamp
         });
+    }
+    
+    function updatePool() internal returns (Pool memory _virtualPool) {
+        uint256 tokenSupply = IERC20(para).balanceOf(address(this));
+        uint256 accParaPerShare;
+        if (block.timestamp > virtualPool.lastRewardTime) {
+            if (tokenSupply > 0) {
+                uint256 passedTime = block.timestamp - virtualPool.lastRewardTime;
+                uint256 caplReward = passedTime * virtualPool.rewardsPerSecond;
+                accParaPerShare =
+                    virtualPool.accParaPerShare +
+                    (caplReward * HEARTS_PER_HEX) /
+                    tokenSupply;
+            }
+            uint256 lastRewardTime = block.timestamp;
+
+            virtualPool.lastRewardTime = lastRewardTime;
+            virtualPool.accParaPerShare = accParaPerShare;
+
+            return virtualPool;
+        }
     }
 
     function _addStake(
