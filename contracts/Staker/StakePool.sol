@@ -82,7 +82,7 @@ contract StakePool is AccessControl, Utilities {
         );
 
         // update pool share
-        virtualPool.totalPooled += newStakeShares;
+        virtualPool.totalPooled += newStakedParas;
 
         /* Transfer staked Paras to contract */
         IERC20(para).safeTransferFrom(msg.sender, address(this), newStakedParas);
@@ -112,6 +112,10 @@ contract StakePool is AccessControl, Utilities {
 
         uint256 servedDays = 0;
         Stake storage stk = stakeListRef[stakeIndex];
+
+        // update pool status
+        updatePool();
+        virtualPool.totalPooled -= stk.stakedParas;
 
         bool prevUnpooled = (stk.unpooledDay != 0);
         uint256 stakeReturn;
@@ -338,10 +342,11 @@ contract StakePool is AccessControl, Utilities {
         }
     }
 
-    function _unpoolStake(UserPosition storage usrPosition, Stake storage st)
+    function _unpoolStake(UserPosition storage usr, Stake storage st)
         internal
     {
-        usrPosition.stakeSharesTotal -= st.stakeShares;
+        usr.totalAmount -= st.stakedParas;
+        usr.stakeSharesTotal -= st.stakeShares;
         st.unpooledDay = block.timestamp / 1 days;
     }
 
