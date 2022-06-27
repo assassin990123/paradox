@@ -17,12 +17,17 @@ contract StakePool is AccessControl, Utilities {
     address internal para;
     IPARA internal PARA;
 
-    constructor(address _para, uint256 _rewardsPerSecond) {
+    // rewards pool - 33% of the staked PARA will be sent to this pool
+    address rewardsPoolAddress;
+
+    constructor(address _para, uint256 _rewardsPerSecond, address _rewardsPoolAddress) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // _grantRole(MINTER_ROLE, msg.sender);
 
+        // the governance token
         para = _para;
         PARA = IPARA(_para);
+        rewardsPoolAddress = _rewardsPoolAddress;
 
         addPool(_rewardsPerSecond);
     }
@@ -40,7 +45,7 @@ contract StakePool is AccessControl, Utilities {
         Pool memory vPool = updatePool();
 
         uint256 newStakeShares = _stakeStartBonusParas(newStakedParas, newStakedDays);
-        uint256 rewardDebt = (newStakedParas * vPool.accParaPerShare) / PARA_PER_HEX;
+        uint256 rewardDebt = (newStakedParas * vPool.accParaPerShare) / PARA_PRECISION;
 
         // get user position
         UserPosition storage userPosition = userPositions[msg.sender];
@@ -79,11 +84,14 @@ contract StakePool is AccessControl, Utilities {
         // update pool share
         virtualPool.totalPooled += newStakeShares;
 
+        /* Transfer staked Paras to contract */
+        IERC20(para).safeTransferFrom(msg.sender, address(this), newStakedParas);
+        
         // burn 33% of the amount
         PARA.burn(newStakedParas * 33 / 100);
 
-        /* Transfer staked Paras to contract */
-        IERC20(para).safeTransferFrom(msg.sender, address(this), (newStakedParas * 33 / 100));
+        // send the other 33% to the rewards pool
+        IERC20(para).safeTransfer(rewardsPoolAddress, newStakedParas * 33 / 100);
     }
 
     /**
@@ -99,8 +107,8 @@ contract StakePool is AccessControl, Utilities {
         Stake[] storage stakeListRef = userPosition.stakes;
 
         /* require() is more informative than the default assert() */
-        require(stakeListRef.length != 0, "HEX: Empty stake list");
-        require(stakeIndex < stakeListRef.length, "HEX: stakeIndex invalid");
+        require(stakeListRef.length != 0, "PARA: Empty stake list");
+        require(stakeIndex < stakeListRef.length, "PARA: stakeIndex invalid");
 
         uint256 servedDays = 0;
         Stake storage stk = stakeListRef[stakeIndex];
@@ -171,9 +179,7 @@ contract StakePool is AccessControl, Utilities {
             ? newStakedParas
             : LPB_H_CAP_PARA;
 
-        bonusParas = cappedExtraDays * LPB_D + cappedStakedParas * LPB_H;
-        bonusParas = newStakedParas * bonusParas / (LPB_D * LPB_H);
-
+        bonusParas = newStakedParas * cappedExtraDays / LPB_H + newStakedParas * cappedStakedParas / LPB_D;
         return bonusParas;
     }
 
@@ -210,19 +216,19 @@ contract StakePool is AccessControl, Utilities {
         }
 
         // get rewards based on the pool shares
-        uint256 accCaplPerShare = virtualPool.accParaPerShare;
+        uint256 accParaPerShare = virtualPool.accParaPerShare;
         uint256 tokenSupply = IERC20(para).balanceOf(address(this));
 
         if (block.timestamp > virtualPool.lastRewardTime && tokenSupply != 0) {
             uint256 passedTime = block.timestamp - virtualPool.lastRewardTime;
-            uint256 caplReward = passedTime * virtualPool.rewardsPerSecond;
-            accCaplPerShare =
-                accCaplPerShare +
-                (caplReward * PARA_PER_HEX) /
+            uint256 paraReward = passedTime * virtualPool.rewardsPerSecond;
+            accParaPerShare =
+                accParaPerShare +
+                (paraReward * PARA_PRECISION) /
                 tokenSupply;
         }
         uint256 pendingPoolShare =
-            (((usr.totalAmount * accCaplPerShare) / PARA_PER_HEX)) -
+            (((usr.totalAmount * accParaPerShare) / PARA_PRECISION)) -
             usr.rewardDebt;
 
         stakeReturn += pendingPoolShare;
@@ -317,10 +323,10 @@ contract StakePool is AccessControl, Utilities {
         if (block.timestamp > virtualPool.lastRewardTime) {
             if (tokenSupply > 0) {
                 uint256 passedTime = block.timestamp - virtualPool.lastRewardTime;
-                uint256 caplReward = passedTime * virtualPool.rewardsPerSecond;
+                uint256 paraReward = passedTime * virtualPool.rewardsPerSecond;
                 accParaPerShare =
                     virtualPool.accParaPerShare +
-                    (caplReward * PARA_PER_HEX) /
+                    (paraReward * PARA_PRECISION) /
                     tokenSupply;
             }
             uint256 lastRewardTime = block.timestamp;

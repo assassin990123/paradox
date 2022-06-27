@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Utilities is AccessControl {
-    uint256 internal constant PARA_PER_HEX = 1e18; // 1e18
+    uint256 internal constant PARA_PRECISION = 1e18; // 1e18
 
     /* Treaury address */
     address internal constant TREASURY_ADDR = address(0);
@@ -22,8 +22,8 @@ contract Utilities is AccessControl {
 
     /* Stake shares Larger Pays Better bonus constants used by calcStakeShares() */
     uint256 internal constant LPB_H_BONUS_PERCENT = 10;
-    uint256 internal constant LPB_H_CAP_HEX = 25 * 1e6;
-    uint256 internal constant LPB_H_CAP_PARA = LPB_H_CAP_HEX * PARA_PER_HEX;
+    uint256 internal constant LPB_H_CAP = 25 * 1e6;
+    uint256 internal constant LPB_H_CAP_PARA = LPB_H_CAP * PARA_PRECISION;
     uint256 internal constant LPB_H = LPB_H_CAP_PARA * 100 / LPB_H_BONUS_PERCENT;
 
     struct Stake {
