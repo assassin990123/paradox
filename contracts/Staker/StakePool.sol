@@ -46,7 +46,8 @@ contract StakePool is AccessControl, Utilities {
         UserPosition storage userPosition = userPositions[msg.sender];
         userPosition.rewardDebt = rewardDebt;
         userPosition.lastStakeId += 1;
-        userPosition.stakeSharesTotal += newStakedParas;
+        userPosition.stakeSharesTotal += newStakeShares;
+        userPosition.totalAmount += newStakedParas;
 
         /*
             The startStake timestamp will always be part-way through the current
@@ -127,8 +128,7 @@ contract StakePool is AccessControl, Utilities {
             (stakeReturn, payout, penalty, cappedPenalty) = _calcStakeReturn(userPosition, stk, servedDays);
         } else {
             /* Stake hasn't been added to the global pool yet, so no penalties or rewards apply */
-            userPosition.nextStakeSharesTotal -= stk.stakeShares;
-
+            userPosition.stakeSharesTotal -= stk.stakeShares;
             stakeReturn = stk.stakedParas;
         }
 
@@ -184,22 +184,18 @@ contract StakePool is AccessControl, Utilities {
     {
         if (servedDays < st.stakedDays) {
             (payout, penalty) = _calcPayoutAndEarlyPenalty(
+                usr,
                 st.pooledDay,
                 st.stakedDays,
                 servedDays,
+                st.stakedParas,
                 st.stakeShares
             );
             stakeReturn = st.stakedParas + payout;
         } else {
-            payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays);
+            payout = calcPayoutRewards(usr.stakeSharesTotal, st.stakedParas, st.stakeShares, st.pooledDay, st.pooledDay + servedDays);
             stakeReturn = st.stakedParas + payout;
             penalty = 0;
-
-            // penalty = _calcLatePenalty(
-            //     st.stakedDays,
-            //     st.unpooledDay - st.pooledDay,
-            //     stakeReturn
-            // );
         }
         if (penalty != 0) {
             if (penalty > stakeReturn) {
@@ -226,7 +222,7 @@ contract StakePool is AccessControl, Utilities {
                 tokenSupply;
         }
         uint256 pendingPoolShare =
-            (((usr.stakeSharesTotal * accCaplPerShare) / PARA_PER_HEX)) -
+            (((usr.totalAmount * accCaplPerShare) / PARA_PER_HEX)) -
             usr.rewardDebt;
 
         stakeReturn += pendingPoolShare;
@@ -244,13 +240,15 @@ contract StakePool is AccessControl, Utilities {
      * @return penalty 2: penalty Paras;
      */
     function _calcPayoutAndEarlyPenalty(
+        UserPosition memory usr,
         uint256 pooledDayParam,
         uint256 stakedDaysParam,
         uint256 servedDays,
+        uint256 stakedParasParam,
         uint256 stakeSharesParam
     )
         private
-        view
+        pure
         returns (uint256 payout, uint256 penalty)
     {
         uint256 servedEndDay = pooledDayParam + servedDays;
@@ -266,15 +264,15 @@ contract StakePool is AccessControl, Utilities {
                 payout:     [pooledDay  .......................  servedEndDay)
             */
             uint256 penaltyEndDay = pooledDayParam + penaltyDays;
-            penalty = calcPayoutRewards(stakeSharesParam, pooledDayParam, penaltyEndDay);
+            penalty = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, pooledDayParam, penaltyEndDay);
 
-            uint256 delta = calcPayoutRewards(stakeSharesParam, penaltyEndDay, servedEndDay);
+            uint256 delta = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, penaltyEndDay, servedEndDay);
             payout = penalty + delta;
             return (payout, penalty);
         }
 
         /* penaltyDays >= servedDays  */
-        payout = calcPayoutRewards(stakeSharesParam, pooledDayParam, servedEndDay);
+        payout = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, pooledDayParam, servedEndDay);
 
         if (penaltyDays == servedDays) {
             penalty = payout;
@@ -295,14 +293,12 @@ contract StakePool is AccessControl, Utilities {
      * @param endDay last day (non-inclusive) of range to calculate bonuses for
      * @return payout Hearts
      */
-    function calcPayoutRewards(uint256 stakeSharesParam, uint256 beginDay, uint256 endDay)
+    function calcPayoutRewards(uint256 stakeSharesTotal, uint256 stakedParas, uint256 stakeSharesParam, uint256 beginDay, uint256 endDay)
         public
-        view
+        pure
         returns (uint256 payout)
     {
-        for (uint256 day = beginDay; day < endDay; day++) {
-            payout += dailyData[day].dayPayoutTotal * stakeSharesParam / dailyData[day].dayStakeSharesTotal;
-        }
+        payout += (endDay - beginDay) * stakedParas * stakeSharesParam / stakeSharesTotal;
         return payout;
     }
     

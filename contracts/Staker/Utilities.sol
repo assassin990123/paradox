@@ -40,7 +40,6 @@ contract Utilities is AccessControl {
         uint256 rewardDebt; // house fee (?)
         uint256 lastStakeId;
         uint256 stakeSharesTotal;
-        uint256 nextStakeSharesTotal;
         Stake[] stakes; // list of user stakes in pool subject to timelock
     }
 
@@ -53,6 +52,7 @@ contract Utilities is AccessControl {
         uint256 accParaPerShare; // distribution multiplier
         uint256 lastRewardTime;
     }
+
     Pool public virtualPool;
 
     /* Period data */
