@@ -137,7 +137,7 @@ contract StakePool is AccessControl, Utilities {
                 }
             }
 
-            (stakeReturn, payout, penalty, cappedPenalty) = _calcStakeReturn(userPosition, stk, servedDays);
+            (stakeReturn, payout, penalty, cappedPenalty) = calcStakeReturn(userPosition, stk, servedDays);
         } else {
             /* Stake hasn't been added to the global pool yet, so no penalties or rewards apply */
             userPosition.stakeSharesTotal -= stk.stakeShares;
@@ -187,8 +187,8 @@ contract StakePool is AccessControl, Utilities {
         return bonusParas;
     }
 
-    function _calcStakeReturn(UserPosition memory usr, Stake memory st, uint256 servedDays)
-        private
+    function calcStakeReturn(UserPosition memory usr, Stake memory st, uint256 servedDays)
+        public
         view
         returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty)
     {
@@ -206,17 +206,6 @@ contract StakePool is AccessControl, Utilities {
             payout = calcPayoutRewards(usr.stakeSharesTotal, st.stakedParas, st.stakeShares, st.pooledDay, st.pooledDay + servedDays);
             stakeReturn = st.stakedParas + payout;
             penalty = 0;
-        }
-        if (penalty != 0) {
-            if (penalty > stakeReturn) {
-                /* Cannot have a negative stake return */
-                cappedPenalty = stakeReturn;
-                stakeReturn = 0;
-            } else {
-                /* Remove penalty from the stake return */
-                cappedPenalty = penalty;
-                stakeReturn -= cappedPenalty;
-            }
         }
 
         // get rewards based on the pool shares
@@ -236,6 +225,19 @@ contract StakePool is AccessControl, Utilities {
             usr.rewardDebt;
 
         stakeReturn += pendingPoolShare;
+        payout += pendingPoolShare;
+
+        if (penalty != 0) {
+            if (penalty > stakeReturn) {
+                /* Cannot have a negative stake return */
+                cappedPenalty = stakeReturn;
+                stakeReturn = 0;
+            } else {
+                /* Remove penalty from the stake return */
+                cappedPenalty = penalty;
+                stakeReturn -= cappedPenalty;
+            }
+        }
 
         return (stakeReturn, payout, penalty, cappedPenalty);
     }
@@ -298,6 +300,8 @@ contract StakePool is AccessControl, Utilities {
 
     /**
      * @dev PUBLIC FACING: Calculates total stake payout including rewards for a multi-day range
+     * @param stakeSharesTotal param from usr to calculate bonuses
+     * @param stakedParas param from stake to calculate bonus
      * @param stakeSharesParam param from stake to calculate bonuses for
      * @param beginDay first day to calculate bonuses for
      * @param endDay last day (non-inclusive) of range to calculate bonuses for
