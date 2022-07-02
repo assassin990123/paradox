@@ -138,7 +138,7 @@ describe("Staker", function () {
 		await para.connect(charlie).approve(staker.address, ONE_M_PARA);
 
 		// stake 1M para
-		await staker.stake(ONE_M_PARA, MIN_STAKE_DAYS + (10 * ONE_DAY));
+		await staker.stake(ONE_M_PARA, MIN_STAKE_DAYS + (72 * ONE_DAY)); // stake 100 days
 
 		// check pool
 		const pool = await staker.virtualPool();
@@ -146,12 +146,30 @@ describe("Staker", function () {
 
 		// check the userposition
 		const userPosition = await staker.getUserPosition(alice.address);
-		userChecks(userPosition, 1_000_000, "0", 1, "1040000");
+		userChecks(userPosition, 1_000_000, "0", 1, "1739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
 	});
   });
 
   describe("End Stake", async () => {
-    it("Should return staked Para and rewards based on the stakeshare.", async () => {});
+    it("Should return staked Para and rewards based on the stakeshare.", async () => {
+		// transfer 1M para to Bob and Charlie
+		await para.transfer(bob.address, ONE_M_PARA);
+		await para.transfer(charlie.address, ONE_M_PARA);
+
+		// check user balances
+		expect(_formatEther(await para.balanceOf(alice.address))).to.equal(_formatEther(ONE_B_PARA - TWO_M_PARA));
+		expect(_formatEther(await para.balanceOf(bob.address))).to.equal(_formatEther(ONE_M_PARA));
+		expect(_formatEther(await para.balanceOf(charlie.address))).to.equal(_formatEther(ONE_M_PARA));
+
+		// approve 1M para to staker contract
+		await para.connect(alice).approve(staker.address, ONE_M_PARA);
+		await para.connect(bob).approve(staker.address, ONE_M_PARA);
+		await para.connect(charlie).approve(staker.address, ONE_M_PARA);
+
+		// stake 1M para
+		await staker.stake(ONE_M_PARA, MIN_STAKE_DAYS + (10 * ONE_DAY));
+
+	});
     it("Should apply penalty before 28 days", async () => {});
   });
 

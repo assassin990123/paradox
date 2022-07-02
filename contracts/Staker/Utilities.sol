@@ -15,7 +15,7 @@ contract Utilities is AccessControl {
     uint256 internal constant MAX_STAKE_DAYS = 2888 days;
 
     /* Stake shares Longer Pays Better bonus constants used by calcStakeShares() */
-    uint256 internal constant LPB_D = 103;
+    uint256 internal constant LPB_D = 103 days;
 
     /* Stake shares Larger Pays Better bonus constants used by calcStakeShares() */
     uint256 internal constant LPB_H_CAP = 25 * 1e6;
