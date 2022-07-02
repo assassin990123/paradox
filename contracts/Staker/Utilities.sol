@@ -15,16 +15,11 @@ contract Utilities is AccessControl {
     uint256 internal constant MAX_STAKE_DAYS = 2888 days;
 
     /* Stake shares Longer Pays Better bonus constants used by calcStakeShares() */
-    uint256 internal constant LPB_D_BONUS_PERCENT = 20;
-    uint256 internal constant LPB_D_BONUS_CAP_PERCENT = 200;
-    uint256 internal constant LPB_D = 364 * 100 / LPB_D_BONUS_PERCENT;
-    uint256 internal constant LPB_D_CAP_DAYS = LPB_D * LPB_D_BONUS_CAP_PERCENT / 100;
+    uint256 internal constant LPB_D = 103;
 
     /* Stake shares Larger Pays Better bonus constants used by calcStakeShares() */
-    uint256 internal constant LPB_H_BONUS_PERCENT = 10;
     uint256 internal constant LPB_H_CAP = 25 * 1e6;
     uint256 internal constant LPB_H_CAP_PARA = LPB_H_CAP * PARA_PRECISION;
-    uint256 internal constant LPB_H = LPB_H_CAP_PARA * 100 / LPB_H_BONUS_PERCENT;
 
     struct Stake {
         uint256 stakeId;
@@ -143,5 +138,12 @@ contract Utilities is AccessControl {
             Surprisingly, 'pop()' uses less gas than 'stakeListRef.length = lastIndex'
         */
         stakeListRef.pop();
+    }
+
+    /**
+    Getters
+     */
+    function getUserPosition(address _user) public view returns (UserPosition memory) {
+        return userPositions[_user];
     }
 }

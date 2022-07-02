@@ -175,16 +175,16 @@ contract StakePool is AccessControl, Utilities {
         uint256 cappedExtraDays = 0;
 
         /* Must be more than 1 day for Longer-Pays-Better */
-        if (newStakedDays > 1) {
-            cappedExtraDays = newStakedDays <= MAX_STAKE_DAYS ? newStakedDays - 1 : MAX_STAKE_DAYS;
+        if (newStakedDays >= MIN_STAKE_DAYS && newStakedDays <= MAX_STAKE_DAYS) {
+            cappedExtraDays = newStakedDays - MIN_STAKE_DAYS;
         }
 
         uint256 cappedStakedParas = newStakedParas <= LPB_H_CAP_PARA
             ? newStakedParas
             : LPB_H_CAP_PARA;
 
-        bonusParas = newStakedParas * cappedExtraDays / LPB_H + newStakedParas * cappedStakedParas / LPB_D;
-        return bonusParas;
+        bonusParas = newStakedParas * cappedExtraDays / LPB_D + newStakedParas * cappedStakedParas / LPB_H_CAP_PARA;
+        return newStakedParas + bonusParas;
     }
 
     function calcStakeReturn(UserPosition memory usr, Stake memory st, uint256 servedDays)
