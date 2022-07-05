@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Utilities.sol";
+import "hardhat/console.sol";
 
 interface IPARA {
     function mint(address to, uint256 amount) external;
@@ -60,7 +61,7 @@ contract StakePool is AccessControl, Utilities {
             stakes align with the same fixed calendar days. The current day is
             already rounded-down, so rounded-up is current day + 1.
         */
-        uint256 newPooledDay = block.timestamp / 1 days + 1;
+        uint256 newPooledDay = block.timestamp / 1 days;
 
         /* Create Stake */
         uint256 newStakeId = userPosition.lastStakeId;
@@ -172,38 +173,32 @@ contract StakePool is AccessControl, Utilities {
         pure
         returns (uint256 bonusParas)
     {
-        uint256 cappedExtraDays = 0;
-
         /* Must be more than 1 day for Longer-Pays-Better */
-        if (newStakedDays >= MIN_STAKE_DAYS && newStakedDays <= MAX_STAKE_DAYS) {
-            cappedExtraDays = newStakedDays - MIN_STAKE_DAYS;
-        }
+        uint256 cappedExtraDays = newStakedDays - MIN_STAKE_DAYS;
 
-        uint256 cappedStakedParas = newStakedParas <= LPB_H_CAP_PARA
+        uint256 cappedStakedParas = newStakedParas <= LPB_A_CAP_PARA
             ? newStakedParas
-            : LPB_H_CAP_PARA;
+            : LPB_A_CAP_PARA;
 
-        bonusParas = newStakedParas * cappedExtraDays / LPB_D + newStakedParas * cappedStakedParas / LPB_H_CAP_PARA;
+        bonusParas = newStakedParas * cappedExtraDays / LPB_D + newStakedParas * cappedStakedParas / LPB_A_CAP_PARA;
         return newStakedParas + bonusParas;
     }
 
     function calcStakeReturn(UserPosition memory usr, Stake memory st, uint256 servedDays)
-        public
+        internal
         view
         returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty)
     {
         if (servedDays < st.stakedDays) {
             (payout, penalty) = _calcPayoutAndEarlyPenalty(
-                usr,
                 st.pooledDay,
                 st.stakedDays,
                 servedDays,
-                st.stakedParas,
-                st.stakeShares
+                st.stakedParas
             );
             stakeReturn = st.stakedParas + payout;
         } else {
-            payout = calcPayoutRewards(usr.stakeSharesTotal, st.stakedParas, st.stakeShares, st.pooledDay, st.pooledDay + servedDays);
+            payout = calcPayoutRewards(st.stakedParas, st.pooledDay, st.pooledDay + servedDays);
             stakeReturn = st.stakedParas + payout;
             penalty = 0;
         }
@@ -247,17 +242,15 @@ contract StakePool is AccessControl, Utilities {
      * @param pooledDayParam param from stake
      * @param stakedDaysParam param from stake
      * @param servedDays number of days actually served
-     * @param stakeSharesParam param from stake
+     * @param stakedParasParam param from stake
      * @return payout 1: payout Paras; 
      * @return penalty 2: penalty Paras;
      */
     function _calcPayoutAndEarlyPenalty(
-        UserPosition memory usr,
         uint256 pooledDayParam,
         uint256 stakedDaysParam,
         uint256 servedDays,
-        uint256 stakedParasParam,
-        uint256 stakeSharesParam
+        uint256 stakedParasParam
     )
         private
         pure
@@ -276,15 +269,15 @@ contract StakePool is AccessControl, Utilities {
                 payout:     [pooledDay  .......................  servedEndDay)
             */
             uint256 penaltyEndDay = pooledDayParam + penaltyDays;
-            penalty = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, pooledDayParam, penaltyEndDay);
+            penalty = calcPayoutRewards(stakedParasParam, pooledDayParam, penaltyEndDay);
 
-            uint256 delta = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, penaltyEndDay, servedEndDay);
+            uint256 delta = calcPayoutRewards(stakedParasParam, penaltyEndDay, servedEndDay);
             payout = penalty + delta;
             return (payout, penalty);
         }
 
         /* penaltyDays >= servedDays  */
-        payout = calcPayoutRewards(usr.stakeSharesTotal, stakedParasParam, stakeSharesParam, pooledDayParam, servedEndDay);
+        payout = calcPayoutRewards(stakedParasParam, pooledDayParam, servedEndDay);
 
         if (penaltyDays == servedDays) {
             penalty = payout;
@@ -300,19 +293,19 @@ contract StakePool is AccessControl, Utilities {
 
     /**
      * @dev PUBLIC FACING: Calculates total stake payout including rewards for a multi-day range
-     * @param stakeSharesTotal param from usr to calculate bonuses
      * @param stakedParas param from stake to calculate bonus
-     * @param stakeSharesParam param from stake to calculate bonuses for
      * @param beginDay first day to calculate bonuses for
      * @param endDay last day (non-inclusive) of range to calculate bonuses for
-     * @return payout Hearts
+     * @return payout Paras
      */
-    function calcPayoutRewards(uint256 stakeSharesTotal, uint256 stakedParas, uint256 stakeSharesParam, uint256 beginDay, uint256 endDay)
+    function calcPayoutRewards(uint256 stakedParas, uint256 beginDay, uint256 endDay)
         public
         pure
         returns (uint256 payout)
     {
-        payout += (endDay - beginDay) * stakedParas * stakeSharesParam / stakeSharesTotal;
+        payout += stakedParas * (endDay - beginDay - MIN_STAKE_DAYS) / LPB_D; // payout based on length
+        uint256 amountMultiplier = stakedParas >= LPB_A_CAP_PARA ? LPB_A_CAP_PARA : stakedParas;
+        payout += stakedParas * amountMultiplier / LPB_A_CAP_PARA; // payout based on amount
         return payout;
     }
     
@@ -354,4 +347,33 @@ contract StakePool is AccessControl, Utilities {
         st.unpooledDay = block.timestamp / 1 days;
     }
 
+    /**
+    Getters
+     */
+    function getUserPosition(address _usr) public view returns (UserPosition memory) {
+        return userPositions[_usr];
+    }
+
+    function getStakeRewards(address _usr, uint256 _stkIdx) public view returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty) {
+        // get user
+        UserPosition memory usr = getUserPosition(_usr);
+        // get stake
+        Stake memory stk = usr.stakes[_stkIdx];
+
+        bool prevUnpooled = (stk.unpooledDay != 0);
+        uint256 currentDay = block.timestamp / 1 days;
+        uint256 servedDays = 0;
+
+        if (prevUnpooled) {
+            /* Previously unpooled in goodAccounting(), so must have served full term */
+            servedDays = stk.stakedDays;
+        } else {
+            servedDays = currentDay - stk.pooledDay;
+            if (servedDays > stk.stakedDays) {
+                servedDays = stk.stakedDays;
+            }
+        }
+
+        (stakeReturn, payout, penalty, cappedPenalty) = calcStakeReturn(usr, stk, servedDays);
+    }
 }
