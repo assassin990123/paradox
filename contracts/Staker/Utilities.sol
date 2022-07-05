@@ -11,11 +11,11 @@ contract Utilities is AccessControl {
     address internal constant TREASURY_ADDR = address(0);
 
     // timelock threshold
-    uint256 internal constant MIN_STAKE_DAYS = 28 days;
-    uint256 internal constant MAX_STAKE_DAYS = 2888 days;
+    uint256 internal constant MIN_STAKE_DAYS = 28;
+    uint256 internal constant MAX_STAKE_DAYS = 2888;
 
     /* Stake shares Longer Pays Better bonus constants used by calcStakeShares() */
-    uint256 internal constant LPB_D = 103 days;
+    uint256 internal constant LPB_D = 103;
 
     /* Stake shares Larger Pays Better bonus constants used by calcStakeShares() */
     uint256 internal constant LPB_A_CAP = 25 * 1e6;
@@ -27,7 +27,6 @@ contract Utilities is AccessControl {
         uint256 stakeShares;
         uint256 pooledDay;
         uint256 stakedDays;
-        uint256 unpooledDay;
     }
 
     struct UserPosition {
@@ -108,8 +107,7 @@ contract Utilities is AccessControl {
                 uint256(newStakedParas),
                 uint256(newStakeShares),
                 uint256(newPooledDay),
-                uint256(newStakedDays),
-                uint256(0) // unpooledDay
+                uint256(newStakedDays)
             )
         );
     }
