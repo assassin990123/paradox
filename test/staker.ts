@@ -4,14 +4,16 @@ import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
 const ONE_M_PARA = BigInt(1_000_000 * 10 ** 18);
+const RPS = BigInt((5000 / (24 * 60 * 60)) * 10 ** 18);
+
 const ONE_HUNDRED_DAYS = BigInt(100 * 24 * 60 * 60);
 const MIN_STAKE_DAYS = BigInt(28 * 24 * 60 * 60);
 const MAX_STAKE_DAYS = BigInt(2888 * 24 * 60 * 60);
 const ONE_DAY = BigInt(24 * 60 * 60);
-const RPS = BigInt((5000 / (24 * 60 * 60)) * 10 ** 18);
 
 let para: any, staker: any;
 let deployer: any, alice: any, bob: any, charlie: any, rewardsPool: any;
+let stakeReturn: any, payout: any, penalty: any, cappedPenalty: any;
 
 const deployContract = async (contract: string, params: any[]) => {
 	let con: any;
@@ -64,6 +66,23 @@ const userChecks = (
 	expect(_formatEther(userPosition.stakeSharesTotal).toFixed(0)).to.equal(expectedStakeShares);
 };
 
+const stakeRewardsChecks = async (
+	userParam: any,
+	stakerParam: any,
+	stakeIndexParam: any,
+	expectedStakeReturn: any,
+	expectedPayout: any,
+	expectedPenalty: any,
+	expectedCappedPenalt: any
+) => {
+	// eslint-disable-next-line prefer-const
+	[stakeReturn, payout, penalty, cappedPenalty] = await stakerParam.getStakeRewards(userParam.address, stakeIndexParam);
+	expect(_formatEther(stakeReturn).toFixed(0)).to.equal(expectedStakeReturn); 
+	expect(_formatEther(payout).toFixed(0)).to.equal(expectedPayout);
+	expect(_formatEther(penalty).toFixed(0)).to.equal(expectedPenalty);
+	expect(_formatEther(cappedPenalty).toFixed(0)).to.equal(expectedCappedPenalt);
+}
+
 describe("Staker", function () {
 	beforeEach(async () => {
 		[deployer, alice, bob, charlie, rewardsPool] = await ethers.getSigners();
@@ -104,6 +123,8 @@ describe("Staker", function () {
     it("Should have precalculated stakeshare.", async () => {
 		// stake 1M para
 		await staker.connect(alice).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY); // stake 100 days
+		// burn 33% of the staked para, and transfer 33% to the rewards pool
+		expect(_formatEther(await para.balanceOf(rewardsPool.address)).toFixed(0)).to.equal("330000");
 
 		// check pool
 		const pool = await staker.virtualPool();
@@ -128,78 +149,101 @@ describe("Staker", function () {
 		const pool = await staker.virtualPool();
 		poolChecks(pool, 1_000_000, "0.06", "0.0");
 
-		// check the stake return - amount bonus: 40000, length bonus: 699029
-		let stakeReturn, payout, penalty, cappedPenalty;
-		// eslint-disable-next-line prefer-const
-		[stakeReturn, payout, penalty, cappedPenalty] = await staker.getStakeRewards(alice.address, 0);		
-		expect(_formatEther(stakeReturn).toFixed(0)).to.equal("2019732"); // staked 1M + rewards 758760
-		expect(_formatEther(payout).toFixed(0)).to.equal("1019732");
-		expect(_formatEther(penalty).toFixed(0)).to.equal("0");
-		expect(_formatEther(cappedPenalty).toFixed(0)).to.equal("0");
+		// check the userposition - amount bonus: 40,000, length bonus: 699,029, staked amount: 1,000,000
+		const userPosition = await staker.getUserPosition(alice.address);
+		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
+				
+		// check the stake return - amount bonus: 40,000, length bonus: 699,029, pool share bonus: 19,732, staked amount: 1,000,000
+		stakeRewardsChecks(alice, staker, 0, "1758761", "758761", "0", "0");
 
 		// end stake
 		await staker.connect(alice).endStake(0, 1);
 
 		// check user balance
-		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("2019732");
+		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1758761");
 
 	});
-    it("Should apply penalty before 28 days", async () => {
-		// stake 1M para
-		await staker.connect(alice).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY);
+    // it("Should apply penalty before staked days", async () => {
+	// 	// stake 1M para
+	// 	await staker.connect(alice).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY);
 
-		// fast forward staked days
-		await network.provider.send("evm_increaseTime", [Number(MIN_STAKE_DAYS - ONE_DAY)]);
-		await network.provider.send("evm_mine");
+	// 	// check pool
+	// 	const pool = await staker.virtualPool();
+	// 	poolChecks(pool, 1_000_000, "0.06", "0.0");
+
+	// 	// check the userposition - amount bonus: 40,000, length bonus: 699,029, staked amount: 1,000,000
+	// 	const userPosition = await staker.getUserPosition(alice.address);
+	// 	userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
+				
+	// 	// fast forward 50 days
+	// 	await network.provider.send("evm_increaseTime", [Number(ONE_DAY * BigInt(50))]);
+	// 	await network.provider.send("evm_mine");
 		
-		// check pool
-		const pool = await staker.virtualPool();
-		poolChecks(pool, 1_000_000, "0.06", "0.0");
+	// 	// check the stake return - amount bonus: 40000, length bonus: 699029
+	// 	let stakeReturn, payout, penalty, cappedPenalty;
 
-		// check the stake return - amount bonus: 40000, length bonus: 699029
-		let stakeReturn, payout, penalty, cappedPenalty;
-		// eslint-disable-next-line prefer-const
-		[stakeReturn, payout, penalty, cappedPenalty] = await staker.getStakeRewards(alice.address, 0);
-		expect(_formatEther(stakeReturn).toFixed(0)).to.equal("1005328"); // staked 1M + rewards 758760
-		expect(_formatEther(payout).toFixed(0)).to.equal("5328");
-		expect(_formatEther(penalty).toFixed(0)).to.equal("0");
-		expect(_formatEther(cappedPenalty).toFixed(0)).to.equal("0");
+	// 	// eslint-disable-next-line prefer-const
+	// 	[stakeReturn, payout, penalty, cappedPenalty] = await staker.getStakeRewards(alice.address, 0);		
+	// 	// amount bonus: 40,000, length bonus: 699,029, pool share bonus: 19,732, staked amount: 1,000,000
+	// 	expect(_formatEther(stakeReturn).toFixed(0)).to.equal("1758761"); 
+	// 	expect(_formatEther(payout).toFixed(0)).to.equal("758761");
+	// 	expect(_formatEther(penalty).toFixed(0)).to.equal("0");
+	// 	expect(_formatEther(cappedPenalty).toFixed(0)).to.equal("0");
 
-		// end stake
-		await staker.connect(alice).endStake(0, 1);
+	// 	// end stake
+	// 	await staker.connect(alice).endStake(0, 1);
 
-		// check user balance
-		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1005328");
-	});
+	// 	// check user balance
+	// 	expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1758761");
+	// });
   });
 
   describe("Stake overview", async () => {
     it("Alice, Bob and Charlie each stake 1,000,000 PARA for 100 days.", async () => {
 		// stake 1M para
 		await staker.connect(alice).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY);
+		// check pool
+		let pool = await staker.virtualPool();
+		poolChecks(pool, 1_000_000, "0.06", "0.0");
+
 		await staker.connect(bob).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY);
+		// check pool
+		pool = await staker.virtualPool();
+		poolChecks(pool, 2_000_000, "0.06", "0.0");
+
 		await staker.connect(charlie).stake(ONE_M_PARA, ONE_HUNDRED_DAYS / ONE_DAY);
+		// check pool
+		pool = await staker.virtualPool();
+		poolChecks(pool, 3_000_000, "0.06", "0.0");
+
+		// check the userposition - amount bonus: 40,000, length bonus: 699,029, staked amount: 1,000,000
+		let userPosition = await staker.getUserPosition(alice.address);
+		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
+
+		userPosition = await staker.getUserPosition(bob.address);
+		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
+
+		userPosition = await staker.getUserPosition(charlie.address);
+		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
 
 		// fast forward staked days
 		await network.provider.send("evm_increaseTime", [Number(ONE_HUNDRED_DAYS / ONE_DAY)]);
 		await network.provider.send("evm_mine");
 
-		// check pool
-		const pool = await staker.virtualPool();
-		poolChecks(pool, 3_000_000, "0.06", "0.0");
+		// check the stake return - amount bonus: 40,000, length bonus: 699,029, pool share bonus: 19,732, staked amount: 1,000,000
+		stakeRewardsChecks(alice, staker, 0, "1758761", "758761", "0", "0");
+		stakeRewardsChecks(bob, staker, 0, "1758761", "758761", "0", "0");
+		stakeRewardsChecks(charlie, staker, 0, "1758761", "758761", "0", "0");
 
-		// check the stake return - amount bonus: 40000, length bonus: 699029
-		let stakeReturn, payout, penalty, cappedPenalty;
-		// eslint-disable-next-line prefer-const
-		[stakeReturn, payout, penalty, cappedPenalty] = await staker.getStakeRewards(alice.address, 0);
+		// // end stake
+		// await staker.connect(alice).endStake(0, 1);
+		// await staker.connect(bob).endStake(0, 1);
+		// await staker.connect(charlie).endStake(0, 1);
 
-		// end stake
-		await staker.endStake(0, 1);
-
-		// check user balance
-		expect(await para.balanceOf(alice.address)).to.equal(0);
-		expect(await para.balanceOf(bob.address)).to.equal(0);
-		expect(await para.balanceOf(charlie.address)).to.equal(0);
+		// // check user balance
+		// expect(await para.balanceOf(alice.address)).to.equal("1758761");
+		// expect(await para.balanceOf(bob.address)).to.equal("1758761");
+		// expect(await para.balanceOf(charlie.address)).to.equal("1758761");
 	});
     it("Alice, Bob and Charlie each stake 1,000,000 PARA for 100 days, Bob end stake 50 days after.", async () => {
 		// stake 1M para

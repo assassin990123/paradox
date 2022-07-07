@@ -176,17 +176,17 @@ contract StakePool is AccessControl, Utilities {
         view
         returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty)
     {
-        console.log(servedDays, st.stakedDays);
+        console.log(usr.totalAmount, st.stakeShares);
         if (servedDays < st.stakedDays) {
             (payout, penalty) = _calcPayoutAndEarlyPenalty(
                 st.pooledDay,
                 st.stakedDays,
                 servedDays,
-                st.stakedParas
+                st.stakeShares
             );
             stakeReturn = st.stakedParas + payout;
         } else {
-            payout = calcPayoutRewards(st.stakedParas, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
+            payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
             stakeReturn = st.stakedParas + payout;
             penalty = 0;
         }
@@ -230,7 +230,7 @@ contract StakePool is AccessControl, Utilities {
      * @param pooledDayParam param from stake
      * @param stakedDaysParam param from stake
      * @param servedDays number of days actually served
-     * @param stakedParasParam param from stake
+     * @param stakeSharesParam param from stake
      * @return payout 1: payout Paras; 
      * @return penalty 2: penalty Paras;
      */
@@ -238,7 +238,7 @@ contract StakePool is AccessControl, Utilities {
         uint256 pooledDayParam,
         uint256 stakedDaysParam,
         uint256 servedDays,
-        uint256 stakedParasParam
+        uint256 stakeSharesParam
     )
         private
         pure
@@ -257,15 +257,15 @@ contract StakePool is AccessControl, Utilities {
                 payout:     [pooledDay  .......................  servedEndDay)
             */
             uint256 penaltyEndDay = pooledDayParam + penaltyDays;
-            penalty = calcPayoutRewards(stakedParasParam, pooledDayParam, penaltyEndDay, stakedDaysParam);
+            penalty = calcPayoutRewards(stakeSharesParam, pooledDayParam, penaltyEndDay, stakedDaysParam);
 
-            uint256 delta = calcPayoutRewards(stakedParasParam, penaltyEndDay, servedEndDay, stakedDaysParam);
+            uint256 delta = calcPayoutRewards(stakeSharesParam, penaltyEndDay, servedEndDay, stakedDaysParam);
             payout = penalty + delta;
             return (payout, penalty);
         }
 
         /* penaltyDays >= servedDays  */
-        payout = calcPayoutRewards(stakedParasParam, pooledDayParam, servedEndDay, stakedDaysParam);
+        payout = calcPayoutRewards(stakeSharesParam, pooledDayParam, servedEndDay, stakedDaysParam);
 
         if (penaltyDays == servedDays) {
             penalty = payout;
@@ -305,7 +305,7 @@ contract StakePool is AccessControl, Utilities {
         });
     }
     
-    function updatePool() internal returns (Pool memory _virtualPool) {
+    function updatePool() internal returns (Pool memory) {
         uint256 tokenSupply = IERC20(para).balanceOf(address(this));
         uint256 accParaPerShare;
         if (block.timestamp > virtualPool.lastRewardTime) {
