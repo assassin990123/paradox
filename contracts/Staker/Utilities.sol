@@ -70,25 +70,7 @@ contract Utilities is AccessControl {
         address indexed stakerAddr,
         uint256 indexed stakeId,
         uint256 payout,
-        uint256 penalty,
         uint256 servedDays
-    );
-
-    event GoodAccountingBySelf(
-        uint256 timestamp,
-        address indexed stakerAddr,
-        uint256 indexed stakeId,
-        uint256 payout,
-        uint256 penalty
-    );
-
-    event GoodAccountingByOther(
-        uint256 timestamp,
-        address indexed stakerAddr,
-        uint256 indexed stakeId,
-        uint256 payout,
-        uint256 penalty,
-        address indexed otherAddr
     );
 
     function _addStake(

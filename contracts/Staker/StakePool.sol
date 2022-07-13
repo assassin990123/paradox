@@ -111,8 +111,16 @@ contract StakePool is AccessControl, Utilities {
         require(stakeListRef.length != 0, "PARA: Empty stake list");
         require(stakeIndex < stakeListRef.length, "PARA: stakeIndex invalid");
 
-        uint256 servedDays = 0;
         Stake storage stk = stakeListRef[stakeIndex];
+
+        uint256 servedDays = 0;
+        uint256 currentDay = block.timestamp / 1 days;
+        servedDays = currentDay - stk.pooledDay;
+        if (servedDays >= stk.stakedDays) {
+            servedDays = stk.stakedDays;
+        } else {
+            revert("PARA: Locked stake");
+        }
 
         // update pool status
         updatePool();
@@ -120,16 +128,8 @@ contract StakePool is AccessControl, Utilities {
 
         uint256 stakeReturn;
         uint256 payout = 0;
-        uint256 penalty = 0;
-        uint256 cappedPenalty = 0;
-        uint256 currentDay = block.timestamp / 1 days;
 
-        servedDays = currentDay - stk.pooledDay;
-        if (servedDays > stk.stakedDays) {
-            servedDays = stk.stakedDays;
-        }
-
-        (stakeReturn, payout, penalty, cappedPenalty) = calcStakeReturn(userPosition, stk, servedDays);
+        (stakeReturn, payout) = calcStakeReturn(userPosition, stk, servedDays);
 
         _unpoolStake(userPosition, stk);
 
@@ -138,7 +138,6 @@ contract StakePool is AccessControl, Utilities {
             msg.sender,
             stakeIdParam,
             payout,
-            penalty,
             uint256(servedDays)
         );
 
@@ -174,22 +173,10 @@ contract StakePool is AccessControl, Utilities {
     function calcStakeReturn(UserPosition memory usr, Stake memory st, uint256 servedDays)
         internal
         view
-        returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty)
+        returns (uint256 stakeReturn, uint256 payout)
     {
-        console.log(usr.totalAmount, st.stakeShares);
-        if (servedDays < st.stakedDays) {
-            (payout, penalty) = _calcPayoutAndEarlyPenalty(
-                st.pooledDay,
-                st.stakedDays,
-                servedDays,
-                st.stakeShares
-            );
-            stakeReturn = st.stakedParas + payout;
-        } else {
-            payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
-            stakeReturn = st.stakedParas + payout;
-            penalty = 0;
-        }
+        payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
+        stakeReturn = st.stakedParas + payout;
 
         // get rewards based on the pool shares
         uint256 accParaPerShare = virtualPool.accParaPerShare;
@@ -210,73 +197,7 @@ contract StakePool is AccessControl, Utilities {
         stakeReturn += pendingPoolShare;
         payout += pendingPoolShare;
 
-        if (penalty != 0) {
-            if (penalty > stakeReturn) {
-                /* Cannot have a negative stake return */
-                cappedPenalty = stakeReturn;
-                stakeReturn = 0;
-            } else {
-                /* Remove penalty from the stake return */
-                cappedPenalty = penalty;
-                stakeReturn -= cappedPenalty;
-            }
-        }
-
-        return (stakeReturn, payout, penalty, cappedPenalty);
-    }
-
-    /**
-     * @dev Calculates served payout and early penalty for early unstake
-     * @param pooledDayParam param from stake
-     * @param stakedDaysParam param from stake
-     * @param servedDays number of days actually served
-     * @param stakeSharesParam param from stake
-     * @return payout 1: payout Paras; 
-     * @return penalty 2: penalty Paras;
-     */
-    function _calcPayoutAndEarlyPenalty(
-        uint256 pooledDayParam,
-        uint256 stakedDaysParam,
-        uint256 servedDays,
-        uint256 stakeSharesParam
-    )
-        private
-        pure
-        returns (uint256 payout, uint256 penalty)
-    {
-        uint256 servedEndDay = pooledDayParam + servedDays;
-
-        /* 50% of stakedDays (rounded up) with a minimum applied */
-        uint256 penaltyDays = stakedDaysParam / 2 + stakedDaysParam % 2;
-
-        if (penaltyDays < servedDays) {
-            /*
-                Simplified explanation of intervals where end-day is non-inclusive:
-                penalty:    [pooledDay  ...  penaltyEndDay)
-                delta:                      [penaltyEndDay  ...  servedEndDay)
-                payout:     [pooledDay  .......................  servedEndDay)
-            */
-            uint256 penaltyEndDay = pooledDayParam + penaltyDays;
-            penalty = calcPayoutRewards(stakeSharesParam, pooledDayParam, penaltyEndDay, stakedDaysParam);
-
-            uint256 delta = calcPayoutRewards(stakeSharesParam, penaltyEndDay, servedEndDay, stakedDaysParam);
-            payout = penalty + delta;
-            return (payout, penalty);
-        }
-
-        /* penaltyDays >= servedDays  */
-        payout = calcPayoutRewards(stakeSharesParam, pooledDayParam, servedEndDay, stakedDaysParam);
-
-        if (penaltyDays == servedDays) {
-            penalty = payout;
-        } else {
-            /*
-                (penaltyDays > servedDays) means not enough days served, so fill the
-                penalty days with the average payout from only the days that were served.
-            */
-            penalty = payout * penaltyDays / servedDays;
-        }
-        return (payout, penalty);
+        return (stakeReturn, payout);
     }
 
     /**
@@ -340,7 +261,7 @@ contract StakePool is AccessControl, Utilities {
         return userPositions[_usr];
     }
 
-    function getStakeRewards(address _usr, uint256 _stkIdx) public view returns (uint256 stakeReturn, uint256 payout, uint256 penalty, uint256 cappedPenalty) {
+    function getStakeRewards(address _usr, uint256 _stkIdx) public view returns (uint256 stakeReturn, uint256 payout) {
         // get user
         UserPosition memory usr = getUserPosition(_usr);
         // get stake
@@ -350,10 +271,12 @@ contract StakePool is AccessControl, Utilities {
         uint256 servedDays = 0;
 
         servedDays = currentDay - stk.pooledDay;
-        if (servedDays > stk.stakedDays) {
+        if (servedDays >= stk.stakedDays) {
             servedDays = stk.stakedDays;
+        } else {
+            return (0, 0);
         }
 
-        (stakeReturn, payout, penalty, cappedPenalty) = calcStakeReturn(usr, stk, servedDays);
+        (stakeReturn, payout) = calcStakeReturn(usr, stk, servedDays);
     }
 }
