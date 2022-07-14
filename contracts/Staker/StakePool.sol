@@ -175,7 +175,7 @@ contract StakePool is AccessControl, Utilities {
         view
         returns (uint256 stakeReturn, uint256 payout)
     {
-        payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
+        payout = calcPayoutRewards(usr.stakeSharesTotal, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
         stakeReturn = st.stakedParas + payout;
 
         // get rewards based on the pool shares
@@ -226,22 +226,18 @@ contract StakePool is AccessControl, Utilities {
         });
     }
     
-    function updatePool() internal returns (Pool memory) {
+    function updatePool() internal returns (Pool memory _vPool) {
         uint256 tokenSupply = IERC20(para).balanceOf(address(this));
-        uint256 accParaPerShare;
         if (block.timestamp > virtualPool.lastRewardTime) {
             if (tokenSupply > 0) {
                 uint256 passedTime = block.timestamp - virtualPool.lastRewardTime;
                 uint256 paraReward = passedTime * virtualPool.rewardsPerSecond;
-                accParaPerShare =
-                    virtualPool.accParaPerShare +
+                virtualPool.accParaPerShare += 
                     (paraReward * PARA_PRECISION) /
                     tokenSupply;
             }
             uint256 lastRewardTime = block.timestamp;
-
             virtualPool.lastRewardTime = lastRewardTime;
-            virtualPool.accParaPerShare = accParaPerShare;
 
             return virtualPool;
         }
