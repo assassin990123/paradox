@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
+
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-
-contract NFTPresale {
+contract NFTPresale is Ownable {
     using SafeERC20 for IERC20; 
 
     address public usdtAddress;
@@ -59,6 +60,7 @@ contract NFTPresale {
         bytes32[] calldata merkleProof
     ) external {
         require(canClaim(destination, amount, merkleProof), "Invalid Claim");
+        require(nfts.balanceOf(msg.sender) * 500 * usdtDecimals >= amount, "Not Enough USDT");
 
         _claimed[destination] = true;
 
@@ -125,5 +127,9 @@ contract NFTPresale {
         uint256 reward = release - userLock.debt;
         userLock.debt += reward;
         para.safeTransfer(_user, reward);
+    }
+
+    function updateRoot(bytes32 _root) external onlyOwner{
+        root = _root;
     }
 }

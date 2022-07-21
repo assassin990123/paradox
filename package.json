@@ -39,6 +39,10 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.6.0",
+<<<<<<< HEAD
+=======
+    "keccak256": "^1.0.6",
+>>>>>>> master
     "merkletreejs": "^0.2.32"
   }
 }
