@@ -18,6 +18,7 @@ describe("Claims tests", async () => {
       paradox = await paradox.deploy()
       
       // SEED PRESALE CONTRACT
+      // TODO, instantiate Tether and NFTs address
       presale = await ethers.getContractFactory("NFTPresale");
       presale = await presale.deploy()
 
@@ -36,4 +37,11 @@ describe("Claims tests", async () => {
         amount.toString()
       )
   });
+  it("Cannot claim twice", async () => {})
+  // check numbers below
+  it("Claims and then the full vesting cycle is completed", async () => {})
+  it("Claims and a new merkle root is added, can no longer claim under any circumstances", async () => {})
+  // for this one, just add a hardhat wallet public key to the data and a number amount in the field
+  it("Claims and a new merkle root is added, new additions can claim", async () => {})
+
 });
