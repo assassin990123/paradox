@@ -34,6 +34,8 @@ contract NFTPresale is Ownable {
 
     struct Lock {
         uint256 total;
+        uint256 max;
+        uint256 paid;
         uint256 debt;
         uint256 startTime;
     }
@@ -55,25 +57,36 @@ contract NFTPresale is Ownable {
         bytes32[] calldata merkleProof
     ) external {
         require(canClaim(destination, amount, merkleProof), "Invalid Claim");
-
-        _claimed[destination] = true;
-
         uint256 maxUSD = 500 * amount * usdtDecimals;
-        require(buyAmount <= maxUSD);
+        require(buyAmount <= maxUSD, "Wrong amount");
+
         // get exchange rate to para
-        uint256 rate = maxUSD * exchangeRate * paradoxDecimals / usdtDecimals;
+        uint256 rate = buyAmount * exchangeRate * paradoxDecimals / usdtDecimals;
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 10% now
         uint256 rateNow = rate * 10 / 100;
         uint256 vestingRate = rate - rateNow;
 
-        locks[destination] = Lock({
-            total: vestingRate,
-            debt: 0,
-            startTime: block.timestamp
-        });
+        if (locks[destination].total == 0) {
+            // new claim
+            locks[destination] = Lock({
+                total: vestingRate,
+                max: maxUSD,
+                paid: buyAmount,
+                debt: 0,
+                startTime: block.timestamp
+            });
 
-        usdt.safeTransferFrom(destination, address(this), maxUSD);
+            if (buyAmount == maxUSD) _claimed[destination] = true;
+        } else {
+            // at this point, the user still has some pending amount they can claim
+            require(buyAmount + locks[destination].paid <= locks[destination].max, "Too Much");
+
+            locks[destination].total += vestingRate;
+            if (buyAmount + locks[destination].paid == locks[destination].max) _claimed[destination] = true;
+        }
+
+        usdt.safeTransferFrom(destination, address(this), buyAmount);
         para.safeTransfer(destination, rateNow);
     }
 
