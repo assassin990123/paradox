@@ -60,6 +60,7 @@ contract NFTPresale is Ownable {
         bytes32[] calldata merkleProof
     ) external {
         require(canClaim(destination, amount, merkleProof), "Invalid Claim");
+        require(nfts.balanceOf(msg.sender) * 500 * usdtDecimals >= amount, "Not Enough USDT");
 
         _claimed[destination] = true;
 
