@@ -16,9 +16,6 @@ contract NFTPresale is Ownable {
     IERC20 internal para;
     IERC20 internal usdt;
 
-    address public nftAddress;
-    IERC721 internal nfts;
-
     mapping(address => bool) _claimed;
 
     bytes32 public root;
@@ -41,12 +38,9 @@ contract NFTPresale is Ownable {
         uint256 startTime;
     }
 
-    constructor (address _usdt, address _nfts, address _paradox, bytes32 _root) {
+    constructor (address _usdt, address _paradox, bytes32 _root) {
         usdtAddress = _usdt;
         usdt = IERC20(_usdt);
-
-        nftAddress = _nfts;
-        nfts = IERC721(_nfts);
 
         paradoxAddress = _paradox;
         para = IERC20(_paradox);
