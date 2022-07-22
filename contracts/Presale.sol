@@ -140,4 +140,6 @@ contract NFTPresale is Ownable {
     function updateRoot(bytes32 _root) external onlyOwner{
         root = _root;
     }
+
+    function update
 }
