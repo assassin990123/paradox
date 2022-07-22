@@ -4,9 +4,9 @@ import { expect } from "chai";
 import { MerkleTree } from "merkletreejs";
 import { ethers, network } from "hardhat";
 
-let para: any, nft: any, usdt: any, presale: any;
+let para: any, usdt: any, presale: any;
 let deployer: any, alice: any;
-let merkleTree: any, root: any;
+let merkleTree: any, root: any, proof: any;
 
 // create proof
 const usdtAmount = BigInt(500 * 10 ** 6);
@@ -23,7 +23,7 @@ const deployContracts = async (_root: any) => {
 	const para = await deployContract("ParadoxTokeneqe", []);
     const nft = await deployContract("Paradox", []);
     const usdt = await deployContract("USDT", []);
-	const presale = await deployContract("NFTPresale", [
+	const presale = await deployContract("Presale", [
 		usdt.address,
 		nft.address,
 		para.address,
@@ -32,19 +32,18 @@ const deployContracts = async (_root: any) => {
 
 	return {
 		para,
-        nft,
 		usdt,
         presale
 	};
 };
 
-const _formatEther = (amount: any) => {
-	return Number(ethers.utils.formatEther(amount));
-};
+export const format = (amount: number, dec: number) => {
+    return Number(Number(ethers.utils.formatUnits(amount, dec)).toFixed(6));
+  };
 
-const _formatUSDT = (amount: any) => {
-    return Number(ethers.utils.formatUnits(amount, 6));
-};
+export const parse = (amount: string, dec: number) => {
+    return ethers.utils.parseUnits(amount, dec);
+  };
 
 describe("Presale", async () => {
     beforeEach(async () => {
@@ -52,7 +51,7 @@ describe("Presale", async () => {
 		[deployer, alice] = await ethers.getSigners();
 
         // lead node
-        const leafNode = [alice.address, ethers.utils.formatBytes32String(usdtAmount.toString())].map(leaf => ethers.utils.keccak256(leaf));
+        const leafNode = [ethers.utils.solidityKeccak256(["address", "uint256"], [alice.address, parse(usdtAmount.toString(), 6)])].map(leaf => ethers.utils.keccak256(leaf));
 
         // get merkle poof
         merkleTree = new MerkleTree(leafNode, ethers.utils.keccak256, { sortPairs: true });
@@ -60,8 +59,11 @@ describe("Presale", async () => {
         // get merkle root
         root = merkleTree.getRoot();
 
+        // get merkle proof
+        proof = merkleTree.getHexProof();
+
         // deloy contracts
-		({ para, nft, usdt, presale } = await deployContracts(root));
+		({ para, usdt, presale } = await deployContracts(root));
 
         // approve usdt
         await usdt.transfer(alice.address, usdtAmount);
@@ -70,29 +72,29 @@ describe("Presale", async () => {
 
     it ("Alice vest 500 usdt, claim paradox, claim vested paradox after a month", async () => {
         // check canClaim
-        expect(await presale.canClaim(alice.address, usdtAmount, merkleTree)).to.equal(true);
+        expect(await presale.canClaim(alice.address, usdtAmount, proof)).to.equal(true);
 
         // claim paradox based on the usdt
-        await presale.claimParadox(alice.address, usdtAmount, merkleTree);
+        await presale.claimParadox(alice.address, usdtAmount, proof);
 
         // check usdt & paradox amount
-        expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("200000");
-        expect(_formatUSDT(await usdt.balanceOf(presale.address)).toFixed(0)).to.equal("500");
+        expect(format(await para.balanceOf(alice.address), 18).toFixed(0)).to.equal("200000");
+        expect(format(await usdt.balanceOf(presale.address), 6).toFixed(0)).to.equal("500");
 
         // get pending vesteClaim
-        expect(_formatEther(await para.pendingVestedClaim(alice.address)).toFixed(0)).to.equal("0");
+        expect(format(await para.pendingVestedClaim(alice.address), 18).toFixed(0)).to.equal("0");
 
         // fast forward a month
         await network.provider.send("evm_increaseTime", [3600 * 24 * 30]);
         await network.provider.send("evm_mine");
 
         // check pending vestClaim
-        expect(_formatEther(await para.pendingVestedClaim(alice.address)).toFixed(0)).to.equal("200000");
+        expect(format(await para.pendingVestedClaim(alice.address), 18).toFixed(0)).to.equal("200000");
 
         // claim vested Para
         await presale.claimVested(alice.address);
 
         // check claimed Para
-        expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("400000");
+        expect(format(await para.balanceOf(alice.address), 18).toFixed(0)).to.equal("400000");
     });
 });

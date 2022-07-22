@@ -1,6 +1,5 @@
 /* eslint-disable node/no-unpublished-import */
 import { MerkleTree } from "merkletreejs";
-import keccak256 from "keccak256";
 import { ethers } from "hardhat";
 
 export const genMTree = (data: any) => {
@@ -13,9 +12,11 @@ export const genMTree = (data: any) => {
     "hex"
   );
 
-  const tree = new MerkleTree(result, keccak256, { sortPairs: true });
-
+  const tree = new MerkleTree(result, ethers.utils.keccak256, { sortPairs: true });
+  
   const root = tree.getHexRoot();
+  console.log(root);
+
   // verify
   result.forEach((leaf, index) => {
     const proof = tree.getHexProof(leaf);
