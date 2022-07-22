@@ -97,4 +97,8 @@ describe("Presale", async () => {
         // check claimed Para
         expect(format(await para.balanceOf(alice.address), 18).toFixed(0)).to.equal("400000");
     });
+    it("Cannot claim twice", async () => {})
+    it("Claims and a new merkle root is added, can no longer claim under any circumstances", async () => {})
+    // for this one, just add a hardhat wallet public key to the data and a number amount in the field
+    it("Claims and a new merkle root is added, new additions can claim", async () => {})
 });
