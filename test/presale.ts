@@ -20,10 +20,10 @@ const deployContract = async (contract: string, params: any[]) => {
 };
 
 const deployContracts = async (_root: any) => {
-	const para = await deployContract("ParadoxTokeneqe", []);
+	const para = await deployContract("ParadoxToken", []);
     const nft = await deployContract("Paradox", []);
     const usdt = await deployContract("USDT", []);
-	const presale = await deployContract("Presale", [
+	const presale = await deployContract("NFTPresale", [
 		usdt.address,
 		nft.address,
 		para.address,
@@ -60,7 +60,7 @@ describe("Presale", async () => {
         root = merkleTree.getRoot();
 
         // get merkle proof
-        proof = merkleTree.getHexProof();
+        proof = merkleTree.getHexProof(leafNode[0]);
 
         // deloy contracts
 		({ para, usdt, presale } = await deployContracts(root));
