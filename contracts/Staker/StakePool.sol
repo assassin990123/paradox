@@ -52,7 +52,7 @@ contract StakePool is AccessControl, Utilities {
         userPosition.lastStakeId += 1;
         userPosition.stakeSharesTotal += newStakeShares;
         userPosition.totalAmount += newStakedParas;
-        userPosition.rewardDebt = (userPosition.totalAmount * vPool.accParaPerShare) / PARA_PRECISION;;
+        userPosition.rewardDebt = (userPosition.totalAmount * vPool.accParaPerShare) / PARA_PRECISION;
 
         /*
             The startStake timestamp will always be part-way through the current
@@ -235,8 +235,7 @@ contract StakePool is AccessControl, Utilities {
                     (paraReward * PARA_PRECISION) /
                     tokenSupply;
             }
-            uint256 lastRewardTime = block.timestamp;
-            virtualPool.lastRewardTime = lastRewardTime;
+            virtualPool.lastRewardTime = block.timestamp;
 
             return virtualPool;
         }
