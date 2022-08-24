@@ -9,7 +9,7 @@ let deployer: any, alice: any;
 let merkleTree: any, root: any, proof: any;
 
 // create proof
-const usdtAmount = BigInt(500 * 10 ** 6);
+const usdtAmount = BigInt(500);
 
 const deployContract = async (contract: string, params: any[]) => {
 	let con: any;
@@ -21,11 +21,9 @@ const deployContract = async (contract: string, params: any[]) => {
 
 const deployContracts = async (_root: any) => {
 	const para = await deployContract("ParadoxToken", []);
-    const nft = await deployContract("Paradox", []);
     const usdt = await deployContract("USDT", []);
 	const presale = await deployContract("NFTPresale", [
 		usdt.address,
-		nft.address,
 		para.address,
         _root
 	]);
@@ -51,7 +49,7 @@ describe("Presale", async () => {
 		[deployer, alice] = await ethers.getSigners();
 
         // lead node
-        const leafNode = [ethers.utils.solidityKeccak256(["address", "uint256"], [alice.address, parse(usdtAmount.toString(), 6)])].map(leaf => ethers.utils.keccak256(leaf));
+        const leafNode = [ethers.utils.solidityKeccak256(["address", "uint256"], [alice.address, usdtAmount])].map(leaf => ethers.utils.keccak256(leaf));
 
         // get merkle poof
         merkleTree = new MerkleTree(leafNode, ethers.utils.keccak256, { sortPairs: true });
@@ -97,7 +95,9 @@ describe("Presale", async () => {
         // check claimed Para
         expect(format(await para.balanceOf(alice.address), 18).toFixed(0)).to.equal("400000");
     });
-    it("Cannot claim twice", async () => {})
+    it("Cannot claim twice", async () => {
+        
+    })
     it("Claims and a new merkle root is added, can no longer claim under any circumstances", async () => {})
     // for this one, just add a hardhat wallet public key to the data and a number amount in the field
     it("Claims and a new merkle root is added, new additions can claim", async () => {})
