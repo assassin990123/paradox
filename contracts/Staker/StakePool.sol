@@ -46,14 +46,13 @@ contract StakePool is AccessControl, Utilities {
         Pool memory vPool = updatePool();
 
         uint256 newStakeShares = _stakeStartBonusParas(newStakedParas, newStakedDays);
-        uint256 rewardDebt = (newStakedParas * vPool.accParaPerShare) / PARA_PRECISION;
 
         // get user position
         UserPosition storage userPosition = userPositions[msg.sender];
-        userPosition.rewardDebt = rewardDebt;
         userPosition.lastStakeId += 1;
         userPosition.stakeSharesTotal += newStakeShares;
         userPosition.totalAmount += newStakedParas;
+        userPosition.rewardDebt = (userPosition.totalAmount * vPool.accParaPerShare) / PARA_PRECISION;;
 
         /*
             The startStake timestamp will always be part-way through the current
