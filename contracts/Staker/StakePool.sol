@@ -15,11 +15,11 @@ contract StakePool is AccessControl, Utilities {
     using SafeERC20 for IERC20;
  
     // para token
-    address internal para;
-    IPARA internal PARA;
+    address immutable para;
+    IPARA PARA;
 
     // rewards pool - 33% of the staked PARA will be sent to this pool
-    address rewardsPoolAddress;
+    address immutable rewardsPoolAddress;
 
     constructor(address _para, uint256 _rewardsPerSecond, address _rewardsPoolAddress) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
