@@ -125,6 +125,9 @@ contract StakePool is AccessControl, Utilities {
         updatePool();
         virtualPool.totalPooled -= stk.stakedParas;
 
+        // update rewardDebt
+        userPosition.rewardDebt = (userPosition.totalAmount * virtualPool.accParaPerShare) / PARA_PRECISION;
+
         uint256 stakeReturn;
         uint256 payout = 0;
 
