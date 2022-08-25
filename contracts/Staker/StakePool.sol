@@ -177,7 +177,7 @@ contract StakePool is AccessControl, Utilities {
         view
         returns (uint256 stakeReturn, uint256 payout)
     {
-        payout = calcPayoutRewards(usr.stakeSharesTotal, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
+        payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
         stakeReturn = st.stakedParas + payout;
 
         // get rewards based on the pool shares
@@ -219,7 +219,8 @@ contract StakePool is AccessControl, Utilities {
         return payout;
     }
     
-    function addPool(uint256 _rewardsPerSecond) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    // this function will be executed only once when the contract is deployed. no need of RBAC
+    function addPool(uint256 _rewardsPerSecond) internal {
         virtualPool = Pool({
             totalPooled: 0,
             rewardsPerSecond: _rewardsPerSecond,
