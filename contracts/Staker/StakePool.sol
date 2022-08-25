@@ -98,9 +98,8 @@ contract StakePool is AccessControl, Utilities {
      * @dev PUBLIC FACING: Closes a stake. The order of the stake list can change so
      * a stake id is used to reject stale indexes.
      * @param stakeIndex Index of stake within stake list
-     * @param stakeIdParam The stake's id
      */
-    function endStake(uint256 stakeIndex, uint256 stakeIdParam)
+    function endStake(uint256 stakeIndex)
         external
     {
         UserPosition storage userPosition = userPositions[msg.sender];
@@ -138,7 +137,7 @@ contract StakePool is AccessControl, Utilities {
         emit EndStake(
             uint256(block.timestamp),
             msg.sender,
-            stakeIdParam,
+            stakeIndex,
             payout,
             uint256(servedDays)
         );
