@@ -148,7 +148,8 @@ contract StakePool is AccessControl, Utilities {
             IERC20(para).safeTransfer(msg.sender, stakeReturn);
         }
 
-        _removeStakeFromList(stakeListRef, stakeIndex);
+        // reset stake
+        delete stakeListRef[stakeIndex];
     }
 
     /**

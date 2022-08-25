@@ -93,30 +93,4 @@ contract Utilities is AccessControl {
             )
         );
     }
-
-    /**
-     * @dev Efficiently delete from an unordered array by moving the last element
-     * to the "hole" and reducing the array length. Can change the order of the list
-     * and invalidate previously held indexes.
-     * @notice stakeListRef length and stakeIndex are already ensured valid in endStake()
-     * @param stakeListRef reference to staked[stakerAddr] array in storage
-     * @param stakeIndex index of the element to delete
-     */
-    function _removeStakeFromList(Stake[] storage stakeListRef, uint256 stakeIndex)
-        internal
-    {
-        uint256 lastIndex = stakeListRef.length - 1;
-
-        /* Skip the copy if element to be removed is already the last element */
-        if (stakeIndex != lastIndex) {
-            /* Copy last element to the requested element's "hole" */
-            stakeListRef[stakeIndex] = stakeListRef[lastIndex];
-        }
-
-        /*
-            Reduce the array length now that the array is contiguous.
-            Surprisingly, 'pop()' uses less gas than 'stakeListRef.length = lastIndex'
-        */
-        stakeListRef.pop();
-    }
 }
