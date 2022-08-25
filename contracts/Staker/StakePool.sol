@@ -221,6 +221,7 @@ contract StakePool is AccessControl, Utilities {
     
     // this function will be executed only once when the contract is deployed. no need of RBAC
     function addPool(uint256 _rewardsPerSecond) internal {
+        require(_rewardsPerSecond > 0, "AddPool Failed: invalid reward per second.");
         virtualPool = Pool({
             totalPooled: 0,
             rewardsPerSecond: _rewardsPerSecond,
