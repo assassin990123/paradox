@@ -33,7 +33,7 @@ contract StakePool is AccessControl, Utilities {
         addPool(_rewardsPerSecond);
     }
 
-    function stake(uint256 newStakedParas, uint256 newStakedDays) public {
+    function stake(uint256 newStakedParas, uint256 newStakedDays) external {
         /* Make sure staked amount is non-zero */
         require(newStakedParas != 0, "PARA: amount must be non-zero");
 
