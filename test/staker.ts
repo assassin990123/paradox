@@ -12,7 +12,7 @@ const MAX_STAKE_DAYS = BigInt(2888 * 24 * 60 * 60);
 const ONE_DAY = BigInt(24 * 60 * 60);
 
 let para: any, staker: any;
-let deployer: any, alice: any, bob: any, charlie: any, rewardsPool: any;
+let alice: any, bob: any, charlie: any, rewardsPool: any;
 let stakeReturn: any, payout: any;
 
 const deployContract = async (contract: string, params: any[]) => {
@@ -81,7 +81,7 @@ const stakeRewardsChecks = async (
 
 describe("Staker", function () {
 	beforeEach(async () => {
-		[deployer, alice, bob, charlie, rewardsPool] = await ethers.getSigners();
+		[alice, bob, charlie, rewardsPool] = await ethers.getSigners();
 		({ para, staker } = await deployContracts(rewardsPool));
 
 		await para.transfer(staker.address, ONE_M_PARA * BigInt(25));
