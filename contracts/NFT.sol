@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, AccessControl {
+contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, AccessControl, ReentrancyGuard {
     using Counters for Counters.Counter;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -19,7 +20,7 @@ contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, 
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function safeMint(address to, string memory uri) public onlyRole(MINTER_ROLE) {
+    function safeMint(address to, string memory uri) public onlyRole(MINTER_ROLE) nonReentrant {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);

@@ -15,11 +15,11 @@ contract StakePool is AccessControl, Utilities {
     using SafeERC20 for IERC20;
  
     // para token
-    address internal para;
-    IPARA internal PARA;
+    address immutable para;
+    IPARA PARA;
 
     // rewards pool - 33% of the staked PARA will be sent to this pool
-    address rewardsPoolAddress;
+    address immutable rewardsPoolAddress;
 
     constructor(address _para, uint256 _rewardsPerSecond, address _rewardsPoolAddress) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -46,14 +46,13 @@ contract StakePool is AccessControl, Utilities {
         Pool memory vPool = updatePool();
 
         uint256 newStakeShares = _stakeStartBonusParas(newStakedParas, newStakedDays);
-        uint256 rewardDebt = (newStakedParas * vPool.accParaPerShare) / PARA_PRECISION;
 
         // get user position
         UserPosition storage userPosition = userPositions[msg.sender];
-        userPosition.rewardDebt = rewardDebt;
         userPosition.lastStakeId += 1;
         userPosition.stakeSharesTotal += newStakeShares;
         userPosition.totalAmount += newStakedParas;
+        userPosition.rewardDebt = (userPosition.totalAmount * vPool.accParaPerShare) / PARA_PRECISION;
 
         /*
             The startStake timestamp will always be part-way through the current
@@ -99,9 +98,8 @@ contract StakePool is AccessControl, Utilities {
      * @dev PUBLIC FACING: Closes a stake. The order of the stake list can change so
      * a stake id is used to reject stale indexes.
      * @param stakeIndex Index of stake within stake list
-     * @param stakeIdParam The stake's id
      */
-    function endStake(uint256 stakeIndex, uint256 stakeIdParam)
+    function endStake(uint256 stakeIndex)
         external
     {
         UserPosition storage userPosition = userPositions[msg.sender];
@@ -126,6 +124,9 @@ contract StakePool is AccessControl, Utilities {
         updatePool();
         virtualPool.totalPooled -= stk.stakedParas;
 
+        // update rewardDebt
+        userPosition.rewardDebt = (userPosition.totalAmount * virtualPool.accParaPerShare) / PARA_PRECISION;
+
         uint256 stakeReturn;
         uint256 payout = 0;
 
@@ -136,7 +137,7 @@ contract StakePool is AccessControl, Utilities {
         emit EndStake(
             uint256(block.timestamp),
             msg.sender,
-            stakeIdParam,
+            stakeIndex,
             payout,
             uint256(servedDays)
         );
@@ -146,7 +147,8 @@ contract StakePool is AccessControl, Utilities {
             IERC20(para).safeTransfer(msg.sender, stakeReturn);
         }
 
-        _removeStakeFromList(stakeListRef, stakeIndex);
+        // reset stake
+        delete stakeListRef[stakeIndex];
     }
 
     /**
@@ -175,7 +177,7 @@ contract StakePool is AccessControl, Utilities {
         view
         returns (uint256 stakeReturn, uint256 payout)
     {
-        payout = calcPayoutRewards(usr.stakeSharesTotal, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
+        payout = calcPayoutRewards(st.stakeShares, st.pooledDay, st.pooledDay + servedDays, st.stakedDays);
         stakeReturn = st.stakedParas + payout;
 
         // get rewards based on the pool shares
@@ -217,7 +219,9 @@ contract StakePool is AccessControl, Utilities {
         return payout;
     }
     
-    function addPool(uint256 _rewardsPerSecond) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    // this function will be executed only once when the contract is deployed. no need of RBAC
+    function addPool(uint256 _rewardsPerSecond) internal {
+        require(_rewardsPerSecond > 0, "AddPool Failed: invalid reward per second.");
         virtualPool = Pool({
             totalPooled: 0,
             rewardsPerSecond: _rewardsPerSecond,
@@ -236,8 +240,7 @@ contract StakePool is AccessControl, Utilities {
                     (paraReward * PARA_PRECISION) /
                     tokenSupply;
             }
-            uint256 lastRewardTime = block.timestamp;
-            virtualPool.lastRewardTime = lastRewardTime;
+            virtualPool.lastRewardTime = block.timestamp;
 
             return virtualPool;
         }
