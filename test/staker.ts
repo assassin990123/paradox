@@ -12,7 +12,7 @@ const MAX_STAKE_DAYS = BigInt(2888 * 24 * 60 * 60);
 const ONE_DAY = BigInt(24 * 60 * 60);
 
 let para: any, staker: any;
-let alice: any, bob: any, charlie: any, rewardsPool: any;
+let deployer: any, alice: any, bob: any, charlie: any, rewardsPool: any;
 let stakeReturn: any, payout: any;
 
 const deployContract = async (contract: string, params: any[]) => {
@@ -81,7 +81,7 @@ const stakeRewardsChecks = async (
 
 describe("Staker", function () {
 	beforeEach(async () => {
-		[alice, bob, charlie, rewardsPool] = await ethers.getSigners();
+		[deployer, alice, bob, charlie, rewardsPool] = await ethers.getSigners();
 		({ para, staker } = await deployContracts(rewardsPool));
 
 		await para.transfer(staker.address, ONE_M_PARA * BigInt(25));
@@ -153,10 +153,10 @@ describe("Staker", function () {
 		stakeRewardsChecks(alice, staker, 0, "1758761", "758761");
 
 		// end stake
-		await staker.connect(alice).endStake(0, 1);
+		await staker.connect(alice).endStake(0);
 
 		// check user balance
-		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1758761");
+		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1739029");
 
 	});
     it("Should lock the stake before staked days", async () => {
@@ -182,7 +182,7 @@ describe("Staker", function () {
 
 		// end stake
 		try {
-			await staker.connect(alice).endStake(0, 1);
+			await staker.connect(alice).endStake(0);
 		} catch (error: any) {
 			expect(error.message).match(
 				/PARA: Locked stake/
@@ -232,14 +232,14 @@ describe("Staker", function () {
 		stakeRewardsChecks(charlie, staker, 0, "1758761", "758761");
 
 		// end stake
-		await staker.connect(alice).endStake(0, 1);
-		await staker.connect(bob).endStake(0, 1);
-		await staker.connect(charlie).endStake(0, 1);
+		await staker.connect(alice).endStake(0);
+		await staker.connect(bob).endStake(0);
+		await staker.connect(charlie).endStake(0);
 
 		// check user balance - amount bonus: 40,000, length bonus: 699,029, pool share bonus: 19,732, staked amount: 1,000,000
-		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1758245");
-		expect(_formatEther(await para.balanceOf(bob.address)).toFixed(0)).to.equal("1758245");
-		expect(_formatEther(await para.balanceOf(charlie.address)).toFixed(0)).to.equal("1758245");
+		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1739029");
+		expect(_formatEther(await para.balanceOf(bob.address)).toFixed(0)).to.equal("1739029");
+		expect(_formatEther(await para.balanceOf(charlie.address)).toFixed(0)).to.equal("1739029");
 	});
     it("Alice, Bob and Charlie each stake 1,000,000 PARA for 100 days, Charlie add stake 1,000,000 PARA 50 days after the first stake", async () => {
 		// stake 1M para
@@ -261,7 +261,7 @@ describe("Staker", function () {
 		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
 
 		userPosition = await staker.getUserPosition(bob.address);
-		userChecks(userPosition, 2_000_000, "9608", 2, "1478058"); // t_amount, rewardDebt, stakeLength, totalStakeShares
+		userChecks(userPosition, 2_000_000, "19216", 2, "1478058"); // t_amount, rewardDebt, stakeLength, totalStakeShares
 
 		userPosition = await staker.getUserPosition(charlie.address);
 		userChecks(userPosition, 1_000_000, "0", 1, "739029"); // t_amount, rewardDebt, stakeLength, totalStakeShares
@@ -276,14 +276,14 @@ describe("Staker", function () {
 		stakeRewardsChecks(charlie, staker, 0, "1758761", "758761");
 
 		// end stake
-		await staker.connect(alice).endStake(0, 1);
-		await staker.connect(bob).endStake(0, 1);
-		await staker.connect(charlie).endStake(0, 1);
+		await staker.connect(alice).endStake(0);
+		await staker.connect(bob).endStake(0);
+		await staker.connect(charlie).endStake(0);
 
 		// check user balance - amount bonus: 40,000, length bonus: 699,029, pool share bonus: 19,732, staked amount: 1,000,000
-		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1758121");
-		expect(_formatEther(await para.balanceOf(bob.address)).toFixed(0)).to.equal("2506634");
-		expect(_formatEther(await para.balanceOf(charlie.address)).toFixed(0)).to.equal("1758121");
+		expect(_formatEther(await para.balanceOf(alice.address)).toFixed(0)).to.equal("1739029");
+		expect(_formatEther(await para.balanceOf(bob.address)).toFixed(0)).to.equal("1739029");
+		expect(_formatEther(await para.balanceOf(charlie.address)).toFixed(0)).to.equal("1739029");
 	});
   });
 });
