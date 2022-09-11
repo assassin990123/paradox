@@ -155,7 +155,4 @@ contract NFTPresale is Ownable, Pausable {
     function withdrawParadox() external onlyOwner {
         para.safeTransfer(msg.sender, para.balanceOf(address(this)));
     }
-    
-    function pause()
-
 }
