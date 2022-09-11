@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -18,10 +17,6 @@ contract NFTPresale is Ownable {
     IERC20 internal usdt;
 
     mapping(address => bool) _claimed;
-
-    bytes32 public root;
-
-    uint256 constant mintSupply = 12500000 * paradoxDecimals;
 
     uint256 constant paradoxDecimals = 10 ** 18;
     uint256 constant usdtDecimals = 10 ** 6;
@@ -53,13 +48,12 @@ contract NFTPresale is Ownable {
         return _claimed[_user];
     }
 
-    function claimParadox(
+    function buyParadox(
         address destination,
         uint256 amount,
         uint256 buyAmount,
         bytes32[] calldata merkleProof
     ) external {
-        require(canClaim(destination, amount, merkleProof), "Invalid Claim");
         uint256 maxUSD = 1000 * usdtDecimals;
         require(buyAmount <= maxUSD, "Wrong amount");
 
@@ -94,7 +88,7 @@ contract NFTPresale is Ownable {
         para.safeTransfer(destination, rateNow);
     }
 
-    function pendingVestedClaim(address _user) external view returns (uint256) {
+    function pendingClaim(address _user) external view returns (uint256) {
         Lock memory userLock = locks[_user];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
@@ -109,7 +103,7 @@ contract NFTPresale is Ownable {
         return release - userLock.debt;
     }
 
-   function claimVested() external {
+   function claim() external {
         Lock storage userLock = locks[msg.sender];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
