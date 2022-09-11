@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+
 contract NFTPresale is Ownable {
     using SafeERC20 for IERC20; 
 
@@ -50,6 +51,10 @@ contract NFTPresale is Ownable {
         root = _root;
     }
 
+    function getClaimed(address _user) external view returns (bool) {
+        return _claimed[_user];
+    }
+
     function claimParadox(
         address destination,
         uint256 amount,
@@ -61,7 +66,7 @@ contract NFTPresale is Ownable {
         require(buyAmount <= maxUSD, "Wrong amount");
 
         // get exchange rate to para
-        uint256 rate = buyAmount * exchangeRate * paradoxDecimals / usdtDecimals;
+        uint256 rate = buyAmount * exchangeRatePrecision * paradoxDecimals / (usdtDecimals * exchangeRate);
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 10% now
         uint256 rateNow = rate * 10 / 100;
@@ -84,6 +89,7 @@ contract NFTPresale is Ownable {
 
             locks[destination].total += vestingRate;
             if (buyAmount + locks[destination].paid == locks[destination].max) _claimed[destination] = true;
+            locks[destination].paid += buyAmount;
         }
 
         usdt.safeTransferFrom(destination, address(this), buyAmount);
@@ -108,36 +114,65 @@ contract NFTPresale is Ownable {
     function pendingVestedClaim(address _user) external view returns (uint256) {
         Lock memory userLock = locks[_user];
 
-        uint256 monthsPassed = block.timestamp % userLock.startTime;
+        uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
         uint256 monthlyRelease = userLock.total / 9;
         
         uint256 release;
-        for (uint256 i = 0; i <= monthsPassed; i++) {
+        for (uint256 i = 0; i < monthsPassed; i++) {
             release += monthlyRelease;
         }
 
         return release - userLock.debt;
     }
 
-   function claimVested(address _user) external {
-        Lock memory userLock = locks[_user];
+   function claimVested() external {
+        Lock storage userLock = locks[msg.sender];
 
-        uint256 monthsPassed = block.timestamp % userLock.startTime;
+        uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
         uint256 monthlyRelease = userLock.total / 9;
         
         uint256 release;
-        for (uint256 i = 0; i <= monthsPassed; i++) {
+        for (uint256 i = 0; i < monthsPassed; i++) {
             release += monthlyRelease;
         }
 
         uint256 reward = release - userLock.debt;
         userLock.debt += reward;
-        para.safeTransfer(_user, reward);
+        para.safeTransfer(msg.sender, reward);
     }
 
     function updateRoot(bytes32 _root) external onlyOwner{
         root = _root;
     }
+
+    function withdrawTether() external onlyOwner {
+        usdt.safeTransfer(msg.sender, usdt.balanceOf(address(this)));
+    }
+
+
+    /** @notice EMERGENCY FUNCTIONS */
+
+    function updateClaimed(address _user) external onlyOwner {
+        _claimed[_user] = !_claimed[_user];
+    }
+
+    function updateUserLock(address _user, uint256 _total, uint256 _max, uint256 _paid, uint256 _startTime) external onlyOwner {
+        Lock storage lock = locks[_user];
+        lock.total = _total;
+        lock.max = _max;
+        lock.paid = _paid;
+        lock.startTime = _startTime;
+    }
+    
+    function withdrawETH() external onlyOwner {
+        address payable to = payable(msg.sender);
+        to.transfer(address(this).balance);
+    }
+
+    function withdrawParadox() external onlyOwner {
+        para.safeTransfer(msg.sender, para.balanceOf(address(this)));
+    }
+
 }
