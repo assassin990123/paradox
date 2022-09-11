@@ -24,8 +24,6 @@ contract NFTPresale is Ownable {
     uint256 constant exchangeRate = 125;
     uint256 constant exchangeRatePrecision = 1000;
 
-    uint256 constant month = 4 weeks;
-
     mapping(address => Lock) public locks;
 
     struct Lock {
