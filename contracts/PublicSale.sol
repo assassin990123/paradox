@@ -5,9 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 
-contract NFTPresale is Ownable {
+
+contract NFTPresale is Ownable, Pausable {
     using SafeERC20 for IERC20; 
 
     address public usdtAddress;
@@ -25,13 +27,15 @@ contract NFTPresale is Ownable {
     uint256 constant exchangeRatePrecision = 1000;
 
     mapping(address => Lock) public locks;
+    
+    // exchange launch time to be set by owner, also unlocks vesting
+    uint256 public exchangeLaunchTime;
 
     struct Lock {
         uint256 total;
         uint256 max;
         uint256 paid;
-        uint256 debt;
-        uint256 startTime;
+        uint256 debt
     }
 
     constructor (address _usdt, address _paradox) {
@@ -40,6 +44,9 @@ contract NFTPresale is Ownable {
 
         paradoxAddress = _paradox;
         para = IERC20(_paradox);
+        
+        // pause claiming vested tokens until exchange launch.
+        _pause()
     }
 
     function getClaimed(address _user) external view returns (bool) {
@@ -67,8 +74,7 @@ contract NFTPresale is Ownable {
                 total: vestingRate,
                 max: maxUSD,
                 paid: buyAmount,
-                debt: 0,
-                startTime: block.timestamp
+                debt: 0
             });
 
             if (buyAmount == maxUSD) _claimed[destination] = true;
@@ -85,10 +91,10 @@ contract NFTPresale is Ownable {
         para.safeTransfer(destination, rateNow);
     }
 
-    function pendingClaim(address _user) external view returns (uint256) {
+    function pendingClaim(address _user) external view whenNotPaused returns (uint256) {
         Lock memory userLock = locks[_user];
 
-        uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
+        uint256 monthsPassed = (block.timestamp - exchangeLaunchTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
         uint256 monthlyRelease = userLock.total / 8;
         
@@ -100,12 +106,12 @@ contract NFTPresale is Ownable {
         return release - userLock.debt;
     }
 
-   function claim() external {
+   function claim() external whenNotPaused {
         Lock storage userLock = locks[msg.sender];
 
-        uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
-        /** @notice userlock.total = 90%, 10% released each month. */
-        uint256 monthlyRelease = userLock.total / 9;
+        uint256 monthsPassed = (block.timestamp - exchangeLaunchTime) / 4 weeks;
+        /** @notice userlock.total = 80%, 20% released each month. */
+        uint256 monthlyRelease = userLock.total / 8;
         
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -123,6 +129,11 @@ contract NFTPresale is Ownable {
 
 
     /** @notice EMERGENCY FUNCTIONS */
+    
+    function setLaunchTime(uint256 _launchTime) external onlyOwner {
+        exchangeLaunchTime = _launchTime;
+        unpause();
+    }
 
     function updateClaimed(address _user) external onlyOwner {
         _claimed[_user] = !_claimed[_user];
@@ -144,5 +155,7 @@ contract NFTPresale is Ownable {
     function withdrawParadox() external onlyOwner {
         para.safeTransfer(msg.sender, para.balanceOf(address(this)));
     }
+    
+    function pause()
 
 }
