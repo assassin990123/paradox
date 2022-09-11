@@ -55,7 +55,6 @@ contract NFTPresale is Ownable, Pausable {
 
     function buyParadox(
         address destination,
-        uint256 amount,
         uint256 buyAmount
     ) external {
         uint256 maxUSD = 1000 * usdtDecimals;
