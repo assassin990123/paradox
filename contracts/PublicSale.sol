@@ -60,7 +60,7 @@ contract NFTPresale is Ownable {
         uint256 rate = buyAmount * exchangeRatePrecision * paradoxDecimals / (usdtDecimals * exchangeRate);
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 10% now
-        uint256 rateNow = rate * 10 / 100;
+        uint256 rateNow = rate * 20 / 100;
         uint256 vestingRate = rate - rateNow;
 
         if (locks[destination].total == 0) {
@@ -92,7 +92,7 @@ contract NFTPresale is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
-        uint256 monthlyRelease = userLock.total / 9;
+        uint256 monthlyRelease = userLock.total / 8;
         
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
