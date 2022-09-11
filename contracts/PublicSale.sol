@@ -144,7 +144,6 @@ contract NFTPresale is Ownable, Pausable {
         lock.total = _total;
         lock.max = _max;
         lock.paid = _paid;
-        lock.startTime = _startTime;
     }
     
     function withdrawETH() external onlyOwner {
