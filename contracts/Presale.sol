@@ -97,7 +97,7 @@ contract NFTPresale is Ownable {
     }
 
     /**
-     * @dev helper for validating if an address has GENI to claim
+     * @dev helper for validating if an address has PARA to claim
      * @return true if claimant has not already claimed and the data is valid, false otherwise
      */
     function canClaim(
