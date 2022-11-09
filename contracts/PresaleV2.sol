@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
 contract ParadoxPresaleV2 is Ownable {
     // Ethereum network paradox token address
@@ -35,11 +36,11 @@ contract ParadoxPresaleV2 is Ownable {
     /** WHITELIST VERIFICATION */
     function canClaim(
         address destination,
-        uint256 amountNow,
         uint256 amountVested,
+        uint256 amountNow,
         bytes32[] calldata merkleProof
     ) public view returns (bool) {
-        bytes32 node = keccak256(abi.encodePacked(destination, amountNow, amountVested));
+        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(destination, amountVested, amountNow))));
         return
             !_claimed[destination] &&
             MerkleProof.verify(merkleProof, root, node);
@@ -47,11 +48,11 @@ contract ParadoxPresaleV2 is Ownable {
 
     function claimParadox(
         address destination,
-        uint256 amountNow,
         uint256 amountVested,
+        uint256 amountNow,
         bytes32[] calldata merkleProof
     ) external {
-        require(canClaim(destination, amountNow, amountVested, merkleProof), "Invalid Claim");
+        require(canClaim(destination, amountVested, amountNow, merkleProof), "Invalid Claim");
 
         _claimed[destination] = true;
 
@@ -66,6 +67,7 @@ contract ParadoxPresaleV2 is Ownable {
 
     function claimVestedParadox() external {
         Lock storage userLock = locks[msg.sender];
+        require(userLock.total > userLock.debt, "Vesting Complete");
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
@@ -73,7 +75,10 @@ contract ParadoxPresaleV2 is Ownable {
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
-            if (i > 2) release += monthlyRelease;
+            if (i >= 2) {
+                if (release == userLock.total) break;
+                release += monthlyRelease;
+            }
         }
 
         uint256 reward = release - userLock.debt;
@@ -81,8 +86,8 @@ contract ParadoxPresaleV2 is Ownable {
         para.transfer(msg.sender, reward);
     }
 
-    function pendingVestedParadox() external view returns(uint256) {
-        Lock memory userLock = locks[msg.sender];
+    function pendingVestedParadox(address _user) external view returns(uint256) {
+        Lock memory userLock = locks[_user];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
@@ -90,7 +95,10 @@ contract ParadoxPresaleV2 is Ownable {
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
-            if (i > 2) release += monthlyRelease;
+            if (i >= 2) {
+                if (release == userLock.total) break;
+                release += monthlyRelease;
+            }
         }
 
         return release - userLock.debt;
