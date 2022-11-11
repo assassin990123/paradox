@@ -4,7 +4,6 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 
 contract ParadoxPresaleV2 is Ownable {
     // Ethereum network paradox token address
@@ -57,7 +56,7 @@ contract ParadoxPresaleV2 is Ownable {
         _claimed[destination] = true;
 
         locks[destination] = Lock({
-            total: amountVested,
+            total: amountVested - amountNow,
             debt: 0,
             startTime: block.timestamp
         });

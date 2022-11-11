@@ -25,6 +25,9 @@ describe("Presale V2 tests", async () => {
     [deployer] = await ethers.getSigners();
 
     [root, tree] = genMTree(tuccData);
+    // @ts-ignore
+    console.log(root);
+
     [mockRoot, mockTree] = genMTree(mockTuccData);
 
     para = await ethers.getContractFactory("ParadoxToken");
@@ -66,8 +69,11 @@ describe("Presale V2 tests", async () => {
       );
 
       const lock = await presale.locks(key[0]);
-      expect(ethers.utils.formatEther(lock.total)).to.equal(
-        ethers.utils.formatEther(key[1])
+      const n1 = Number(ethers.utils.formatEther(key[1]));
+      const n2 = Number(ethers.utils.formatEther(key[2]));
+
+      expect(Number(ethers.utils.formatEther(lock.total)).toFixed(0)).to.equal(
+        (n1 - n2).toFixed(0).toString()
       );
       expect(lock.debt).to.equal(0);
     }
@@ -131,8 +137,8 @@ describe("Presale V2 tests", async () => {
     lock = await mockPresale.locks(address);
     expect(ethers.utils.formatEther(lock.debt)).to.equal(vested.toString());
     expect(
-      Number(ethers.utils.formatEther(await para.balanceOf(address)))
-    ).to.equal(vested + deployerBalance);
+      Number(ethers.utils.formatEther(await para.balanceOf(address))).toFixed(0)
+    ).to.equal((vested + deployerBalance).toFixed(0));
 
     // +1 month
 
@@ -150,8 +156,8 @@ describe("Presale V2 tests", async () => {
       (vested * 3).toString()
     );
     expect(
-      Number(ethers.utils.formatEther(await para.balanceOf(address)))
-    ).to.equal(vested * 3 + deployerBalance);
+      Number(ethers.utils.formatEther(await para.balanceOf(address))).toFixed(0)
+    ).to.equal((vested * 3 + deployerBalance).toFixed(0));
 
     // fast forward to many, many months later
     await network.provider.send("evm_increaseTime", [200 * 2419200]);
