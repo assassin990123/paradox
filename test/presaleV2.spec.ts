@@ -26,7 +26,7 @@ describe("Presale V2 tests", async () => {
 
     [root, tree] = genMTree(tuccData);
     // @ts-ignore
-    console.log(root);
+    // console.log(root);
 
     [mockRoot, mockTree] = genMTree(mockTuccData);
 

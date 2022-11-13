@@ -18,8 +18,6 @@ contract Parapad is Ownable {
 
     mapping(address => bool) public _claimed;
 
-    bytes32 public root;
-
     uint256 constant internal MINT_SUPPLY = 12500000 * PARADOX_DECIMALS;
 
     uint256 constant internal PARADOX_DECIMALS = 10 ** 18;
@@ -30,84 +28,63 @@ contract Parapad is Ownable {
 
     uint256 constant internal MONTH = 4 weeks;
 
+    /** MAXIMUM OF $1000 per person */
+    uint256 constant internal MAX_AMOUNT = 1000 * USDT_DECIMALS;
+
     mapping(address => Lock) public locks;
 
     struct Lock {
         uint256 total;
-        uint256 max;
         uint256 paid;
         uint256 debt;
         uint256 startTime;
     }
 
-    constructor (address _usdt, address _paradox, bytes32 _root) {
+    constructor (address _usdt, address _paradox) {
         usdtAddress = _usdt;
         usdt = IERC20(_usdt);
 
         paradoxAddress = _paradox;
         para = IERC20(_paradox);
-
-        root = _root;
     }
 
     function getClaimed(address _user) external view returns (bool) {
         return _claimed[_user];
     }
 
-    function claimParadox(
-        address destination,
-        uint256 amount,
-        uint256 buyAmount,
-        bytes32[] calldata merkleProof
+    function buyParadox(
+        uint256 amount
     ) external {
-        require(canClaim(destination, amount, merkleProof), "Invalid Claim");
-        uint256 maxUSD = 1000 * amount * USDT_DECIMALS;
-        require(buyAmount <= maxUSD, "Wrong amount");
-
+        require(!_claimed[msg.sender], "Limit reached");
+        require(amount <= MAX_AMOUNT, "Wrong amount");
         // get exchange rate to para
-        uint256 rate = buyAmount * EXCHANGE_RATE_DENOMINATOR * PARADOX_DECIMALS / (USDT_DECIMALS * EXCHANGE_RATE);
+        uint256 rate = amount * EXCHANGE_RATE_DENOMINATOR * PARADOX_DECIMALS / (USDT_DECIMALS * EXCHANGE_RATE);
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 20% now
         uint256 rateNow = rate * 20 / 100;
         uint256 vestingRate = rate - rateNow;
 
-        if (locks[destination].total == 0) {
+        if (locks[msg.sender].total == 0) {
             // new claim
-            locks[destination] = Lock({
+            locks[msg.sender] = Lock({
                 total: vestingRate,
-                max: maxUSD,
-                paid: buyAmount,
+                paid: amount,
                 debt: 0,
                 startTime: block.timestamp
             });
 
-            if (buyAmount == maxUSD) _claimed[destination] = true;
+            if (amount == MAX_AMOUNT) _claimed[msg.sender] = true;
         } else {
             // at this point, the user still has some pending amount they can claim
-            require(buyAmount + locks[destination].paid <= locks[destination].max, "Too Much");
+            require(amount + locks[msg.sender].paid <= MAX_AMOUNT, "Too Much");
 
-            locks[destination].total += vestingRate;
-            if (buyAmount + locks[destination].paid == locks[destination].max) _claimed[destination] = true;
-            locks[destination].paid += buyAmount;
+            locks[msg.sender].total += vestingRate;
+            if (amount + locks[msg.sender].paid == MAX_AMOUNT) _claimed[msg.sender] = true;
+            locks[msg.sender].paid += amount;
         }
 
-        usdt.safeTransferFrom(destination, address(this), buyAmount);
-        para.safeTransfer(destination, rateNow);
-    }
-
-    /**
-     * @dev helper for validating if an address has PARA to claim
-     * @return true if claimant has not already claimed and the data is valid, false otherwise
-     */
-    function canClaim(
-        address destination,
-        uint256 amount,
-        bytes32[] calldata merkleProof
-    ) public view returns (bool) {
-        bytes32 node = keccak256(abi.encodePacked(destination, amount));
-        return
-            !_claimed[destination] &&
-            MerkleProof.verify(merkleProof, root, node);
+        usdt.safeTransferFrom(msg.sender, address(this), amount);
+        para.safeTransfer(msg.sender, rateNow);
     }
 
     // New Function
@@ -151,25 +128,18 @@ contract Parapad is Ownable {
         para.safeTransfer(msg.sender, reward);
     }
 
-    function updateRoot(bytes32 _root) external onlyOwner{
-        root = _root;
-    }
-
     function withdrawTether() external onlyOwner {
         usdt.safeTransfer(msg.sender, usdt.balanceOf(address(this)));
     }
 
-
     /** @notice EMERGENCY FUNCTIONS */
-
     function updateClaimed(address _user) external onlyOwner {
         _claimed[_user] = !_claimed[_user];
     }
 
-    function updateUserLock(address _user, uint256 _total, uint256 _max, uint256 _paid, uint256 _startTime) external onlyOwner {
+    function updateUserLock(address _user, uint256 _total, uint256 _paid, uint256 _startTime) external onlyOwner {
         Lock storage lock = locks[_user];
         lock.total = _total;
-        lock.max = _max;
         lock.paid = _paid;
         lock.startTime = _startTime;
     }
@@ -182,5 +152,4 @@ contract Parapad is Ownable {
     function withdrawParadox() external onlyOwner {
         para.safeTransfer(msg.sender, para.balanceOf(address(this)));
     }
-
 }
