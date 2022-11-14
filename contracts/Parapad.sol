@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
+import "hardhat/console.sol"; 
 
 contract Parapad is Ownable {
     using SafeERC20 for IERC20; 
@@ -18,8 +18,6 @@ contract Parapad is Ownable {
 
     mapping(address => bool) public _claimed;
 
-    uint256 constant internal MINT_SUPPLY = 12500000 * PARADOX_DECIMALS;
-
     uint256 constant internal PARADOX_DECIMALS = 10 ** 18;
     uint256 constant internal USDT_DECIMALS = 10 ** 6;
     
@@ -30,6 +28,7 @@ contract Parapad is Ownable {
 
     /** MAXIMUM OF $1000 per person */
     uint256 constant internal MAX_AMOUNT = 1000 * USDT_DECIMALS;
+    uint256 constant internal MAX_AMOUNT_PARA = 33333 * PARADOX_DECIMALS;
 
     mapping(address => Lock) public locks;
 
@@ -93,12 +92,14 @@ contract Parapad is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each MONTH after 2 MONTHs */ 
-        uint256 monthlyRelease = userLock.total * 2 / 10;
-
+        uint256 monthlyRelease = userLock.total * 5 / 100;
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             if (i >= 2) {
-                if (release == userLock.total) break;
+                if (release >= userLock.total) {
+                    release = userLock.total;
+                    break;
+                }
                 release += monthlyRelease;
             }
         }
@@ -109,27 +110,30 @@ contract Parapad is Ownable {
     // New Function
     function claimVestedParadox() external {
         Lock storage userLock = locks[msg.sender];
-        require(userLock.total == userLock.debt, "Vesting Complete");
+        require(userLock.total > userLock.debt, "Vesting Complete");
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each MONTH after 2 MONTHs */
-        uint256 monthlyRelease = userLock.total * 2 / 10;
+        uint256 monthlyRelease = userLock.total * 5 / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             if (i >= 2) {
-                if (release == userLock.total) break;
+                if (release >= userLock.total) {
+                    release = userLock.total;
+                    break;
+                }
                 release += monthlyRelease;
             }
         }
 
         uint256 reward = release - userLock.debt;
         userLock.debt += reward;
-        para.safeTransfer(msg.sender, reward);
+        para.transfer(msg.sender, reward);
     }
 
-    function withdrawTether() external onlyOwner {
-        usdt.safeTransfer(msg.sender, usdt.balanceOf(address(this)));
+    function withdrawTether(address _destination) external onlyOwner {
+        usdt.safeTransfer(_destination, usdt.balanceOf(address(this)));
     }
 
     /** @notice EMERGENCY FUNCTIONS */

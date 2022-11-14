@@ -1,18 +1,13 @@
 /* eslint-disable node/no-unsupported-features/es-syntax */
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
+// eslint-disable-next-line node/no-missing-import
 import { genMTree } from "../utils";
-import MerkleTree from "merkletreejs";
-import keccak256 from "keccak256";
 import tuccData from "../data/tuccData.json";
 import mockTuccData from "../data/mockTuccData.json";
 
-import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
-import { isValidMerkleTree } from "@openzeppelin/merkle-tree/dist/core";
-
 describe("Presale V2 tests", async () => {
   let deployer: any;
-  let addrs;
   let root: any;
   let mockRoot: any;
   let tree: any;
@@ -101,7 +96,7 @@ describe("Presale V2 tests", async () => {
 
     let lock = await mockPresale.locks(address);
     const t = Number(ethers.utils.formatEther(lock.total));
-    const vested = (t * 2) / 10;
+    const vested = (t * 5) / 100;
 
     expect(await mockPresale.pendingVestedParadox(address)).to.equal("0");
 
