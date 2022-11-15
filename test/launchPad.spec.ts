@@ -2,6 +2,8 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import mockLaunchpadData from "../data/mockLaunchpadData.json";
+import launchpadData from "../data/launchpadData.json";
+
 import { genMTreeLaunchPad } from "../utils";
 
 describe("Presale V2 tests", async () => {
@@ -11,9 +13,9 @@ describe("Presale V2 tests", async () => {
   let mockLaunchPad: any;
 
   let root;
-  let mockRoot;
+  let mockRoot: any;
   let tree: any;
-  let mockTree;
+  let mockTree: any;
 
   beforeEach(async function () {
     [deployer] = await ethers.getSigners();
@@ -21,21 +23,21 @@ describe("Presale V2 tests", async () => {
     para = await ethers.getContractFactory("ParadoxToken");
     para = await para.deploy();
 
-    [root, tree] = genMTreeLaunchPad(mockLaunchpadData);
+    [root, tree] = genMTreeLaunchPad(launchpadData);
     [mockRoot, mockTree] = genMTreeLaunchPad(mockLaunchpadData);
 
     launchPad = await ethers.getContractFactory("Launchpad");
     launchPad = await launchPad.deploy(para.address, root);
 
     mockLaunchPad = await ethers.getContractFactory("Launchpad");
-    mockLaunchPad = await mockLaunchPad.deploy(para.address, root);
+    mockLaunchPad = await mockLaunchPad.deploy(para.address, mockRoot);
 
     para.transfer(launchPad.address, ethers.utils.parseEther("100000000"));
     para.transfer(mockLaunchPad.address, ethers.utils.parseEther("100000000"));
   });
   it("Buys Paradox at the correct exchange rate", async () => {
-    const result = Object.keys(mockLaunchpadData).map((key) => {
-      const data = mockLaunchpadData[Number(key)];
+    const result = Object.keys(launchpadData).map((key) => {
+      const data = launchpadData[Number(key)];
       const address = Object.keys(data)[0];
       const amount = ethers.utils.parseEther(
         Number(Object.values(data)[0]).toFixed(6)
@@ -80,7 +82,7 @@ describe("Presale V2 tests", async () => {
       Object.values(mockLaunchpadData)[0][address]
     );
 
-    const proof = tree.getProof([address, amount]);
+    const proof = mockTree.getProof([address, amount]);
 
     expect(await mockLaunchPad.canClaim(address, amount, proof)).to.equal(true);
 
@@ -90,7 +92,7 @@ describe("Presale V2 tests", async () => {
       ethers.utils.formatEther(await para.balanceOf(deployer.address))
     );
 
-    const lock = await mockLaunchPad.locks(address);
+    let lock = await mockLaunchPad.locks(address);
     const t = Number(ethers.utils.formatEther(lock.total));
     const vested = (t * 5) / 100;
 
@@ -122,5 +124,62 @@ describe("Presale V2 tests", async () => {
         )
       )
     ).to.equal(vested);
+
+    await mockLaunchPad.claimVestedParadox();
+
+    lock = await mockLaunchPad.locks(address);
+    expect(ethers.utils.formatEther(lock.debt)).to.equal(vested.toString());
+    expect(
+      Number(ethers.utils.formatEther(await para.balanceOf(address))).toFixed(0)
+    ).to.equal((vested + deployerBalance).toFixed(0));
+
+    // +1 month
+    await network.provider.send("evm_increaseTime", [2 * 2419200]);
+    await network.provider.send("evm_mine");
+
+    expect(
+      ethers.utils.formatEther(
+        await mockLaunchPad.pendingVestedParadox(address)
+      )
+    ).to.equal((vested * 2).toString());
+
+    await mockLaunchPad.claimVestedParadox();
+
+    lock = await mockLaunchPad.locks(address);
+    expect(ethers.utils.formatEther(lock.debt)).to.equal(
+      (vested * 3).toString()
+    );
+
+    expect(
+      Number(ethers.utils.formatEther(await para.balanceOf(address))).toFixed(0)
+    ).to.equal((vested * 3 + deployerBalance).toFixed(0));
+
+    // fast forward to many, many months later
+    await network.provider.send("evm_increaseTime", [200 * 2419200]);
+    await network.provider.send("evm_mine");
+
+    // at this point, we should only be able to claim the total amount
+    await mockLaunchPad.claimVestedParadox();
+    lock = await mockLaunchPad.locks(address);
+    expect(ethers.utils.formatEther(lock.debt)).to.equal(
+      ethers.utils.formatEther(lock.total).toString()
+    );
+
+    expect(
+      Number(ethers.utils.formatEther(await para.balanceOf(address))).toFixed(0)
+    ).to.equal((deployerBalance + t).toFixed(0));
+
+    await network.provider.send("evm_increaseTime", [2 * 2419200]);
+    await network.provider.send("evm_mine");
+
+    expect(
+      ethers.utils.formatEther(
+        await mockLaunchPad.pendingVestedParadox(address)
+      )
+    ).to.equal("0.0");
+
+    await expect(mockLaunchPad.claimVestedParadox()).to.be.revertedWith(
+      "Vesting Complete"
+    );
   });
 });
