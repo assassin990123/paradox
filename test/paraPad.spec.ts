@@ -40,7 +40,7 @@ describe("Presale V2 tests", async () => {
       .connect(alice)
       .approve(paraPad.address, ethers.utils.parseUnits(amount, 6));
 
-    await paraPad.connect(alice).buyParadox(ethers.utils.parseUnits(amount, 6));
+    await paraPad.connect(alice).buyParadox(ethers.utils.parseUnits("1", 6));
 
     expect(
       Number(

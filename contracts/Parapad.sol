@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol"; 
 
 contract Parapad is Ownable {
     using SafeERC20 for IERC20; 
@@ -28,7 +27,6 @@ contract Parapad is Ownable {
 
     /** MAXIMUM OF $1000 per person */
     uint256 constant internal MAX_AMOUNT = 1000 * USDT_DECIMALS;
-    uint256 constant internal MAX_AMOUNT_PARA = 33333 * PARADOX_DECIMALS;
 
     mapping(address => Lock) public locks;
 

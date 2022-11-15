@@ -29,25 +29,18 @@ export const genMTree = (data: any) => {
   return [root, tree];
 };
 
-export const cleanData = () => {
-  const allLines = fs
-    .readFileSync("../data/tuccData.csv")
-    .toString()
-    .split("\n");
+export const genMTreeLaunchPad = (data: any) => {
+  const result = Object.keys(data).map((key) => {
+    const d = data[Number(key)];
+    const address = Object.keys(d)[0];
+    // @ts-ignore
+    const amount = Number(Object.values(d)[0]).toFixed(6);
 
-  const newData = [];
+    return [address, ethers.utils.parseEther(amount)];
+  });
 
-  for (let i = 0; i < allLines.length; i++) {
-    try {
-      const currentline = allLines[i].split(",");
-      const address = currentline[0];
-      const total = currentline[1];
-      const now = String(currentline[2].replace("\r", ""));
+  const tree = StandardMerkleTree.of(result, ["address", "uint256"]);
 
-      const data = { [address]: [total, now] };
-      newData.push(data);
-    } catch (e) {}
-  }
-
-  fs.writeFileSync("../data/tuccData.json", JSON.stringify(newData), "utf-8");
+  const root = tree.root;
+  return [root, tree];
 };

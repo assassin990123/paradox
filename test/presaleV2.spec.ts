@@ -20,8 +20,6 @@ describe("Presale V2 tests", async () => {
     [deployer] = await ethers.getSigners();
 
     [root, tree] = genMTree(tuccData);
-    // @ts-ignore
-    // console.log(root);
 
     [mockRoot, mockTree] = genMTree(mockTuccData);
 

@@ -63,7 +63,7 @@ contract Launchpad is Ownable {
             startTime: block.timestamp
         });
 
-        para.transfer(destination, amount);
+        para.transfer(destination, amountNow);
     }
 
     function claimVestedParadox() external {
@@ -72,12 +72,15 @@ contract Launchpad is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 2 / 10;
+        uint256 monthlyRelease = userLock.total * 5 / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             if (i >= 2) {
-                if (release == userLock.total) break;
+                if (release >= userLock.total) {
+                    release == userLock.total;
+                    break;
+                }
                 release += monthlyRelease;
             }
         }
@@ -93,12 +96,15 @@ contract Launchpad is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 2 / 10;
+        uint256 monthlyRelease = userLock.total * 5 / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             if (i >= 2) {
-                if (release == userLock.total) break;
+                if (release >= userLock.total) {
+                    release == userLock.total;
+                    break;
+                }             
                 release += monthlyRelease;
             }
         }
