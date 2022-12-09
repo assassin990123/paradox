@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Parapad is Ownable {
-    using SafeERC20 for IERC20; 
+    using SafeERC20 for IERC20;
 
     address public usdtAddress;
     address public paradoxAddress;
@@ -17,16 +17,16 @@ contract Parapad is Ownable {
 
     mapping(address => bool) public _claimed;
 
-    uint256 constant internal PARADOX_DECIMALS = 10 ** 18;
-    uint256 constant internal USDT_DECIMALS = 10 ** 6;
-    
-    uint256 constant internal EXCHANGE_RATE = 3;
-    uint256 constant internal EXCHANGE_RATE_DENOMINATOR = 100;
+    uint256 internal constant PARADOX_DECIMALS = 10 ** 18;
+    uint256 internal constant USDT_DECIMALS = 10 ** 6;
 
-    uint256 constant internal MONTH = 4 weeks;
+    uint256 internal constant EXCHANGE_RATE = 3;
+    uint256 internal constant EXCHANGE_RATE_DENOMINATOR = 100;
+
+    uint256 internal constant MONTH = 4 weeks;
 
     /** MAXIMUM OF $1000 per person */
-    uint256 constant internal MAX_AMOUNT = 1000 * USDT_DECIMALS;
+    uint256 internal constant MAX_AMOUNT = 1000 * USDT_DECIMALS;
 
     mapping(address => Lock) public locks;
 
@@ -37,7 +37,7 @@ contract Parapad is Ownable {
         uint256 startTime;
     }
 
-    constructor (address _usdt, address _paradox) {
+    constructor(address _usdt, address _paradox) {
         usdtAddress = _usdt;
         usdt = IERC20(_usdt);
 
@@ -49,16 +49,15 @@ contract Parapad is Ownable {
         return _claimed[_user];
     }
 
-    function buyParadox(
-        uint256 amount
-    ) external {
+    function buyParadox(uint256 amount) external {
         require(!_claimed[msg.sender], "Limit reached");
         require(amount <= MAX_AMOUNT, "Wrong amount");
         // get exchange rate to para
-        uint256 rate = amount * EXCHANGE_RATE_DENOMINATOR * PARADOX_DECIMALS / (USDT_DECIMALS * EXCHANGE_RATE);
+        uint256 rate = (amount * EXCHANGE_RATE_DENOMINATOR * PARADOX_DECIMALS) /
+            (USDT_DECIMALS * EXCHANGE_RATE);
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 20% now
-        uint256 rateNow = rate * 20 / 100;
+        uint256 rateNow = (rate * 20) / 100;
         uint256 vestingRate = rate - rateNow;
 
         if (locks[msg.sender].total == 0) {
@@ -76,7 +75,8 @@ contract Parapad is Ownable {
             require(amount + locks[msg.sender].paid <= MAX_AMOUNT, "Too Much");
 
             locks[msg.sender].total += vestingRate;
-            if (amount + locks[msg.sender].paid == MAX_AMOUNT) _claimed[msg.sender] = true;
+            if (amount + locks[msg.sender].paid == MAX_AMOUNT)
+                _claimed[msg.sender] = true;
             locks[msg.sender].paid += amount;
         }
 
@@ -85,12 +85,14 @@ contract Parapad is Ownable {
     }
 
     // New Function
-    function pendingVestedParadox(address _user) external view returns(uint256) {
+    function pendingVestedParadox(
+        address _user
+    ) external view returns (uint256) {
         Lock memory userLock = locks[_user];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
-        /** @notice 5% released each MONTH after 2 MONTHs */ 
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        /** @notice 5% released each MONTH after 2 MONTHs */
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             if (i >= 2) {
@@ -104,7 +106,7 @@ contract Parapad is Ownable {
 
         return release - userLock.debt;
     }
- 
+
     // New Function
     function claimVestedParadox() external {
         Lock storage userLock = locks[msg.sender];
@@ -112,7 +114,7 @@ contract Parapad is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each MONTH after 2 MONTHs */
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -139,13 +141,18 @@ contract Parapad is Ownable {
         _claimed[_user] = !_claimed[_user];
     }
 
-    function updateUserLock(address _user, uint256 _total, uint256 _paid, uint256 _startTime) external onlyOwner {
+    function updateUserLock(
+        address _user,
+        uint256 _total,
+        uint256 _paid,
+        uint256 _startTime
+    ) external onlyOwner {
         Lock storage lock = locks[_user];
         lock.total = _total;
         lock.paid = _paid;
         lock.startTime = _startTime;
     }
-    
+
     function withdrawETH() external onlyOwner {
         address payable to = payable(msg.sender);
         to.transfer(address(this).balance);

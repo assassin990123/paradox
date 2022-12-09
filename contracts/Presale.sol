@@ -7,9 +7,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-
 contract NFTPresale is Ownable {
-    using SafeERC20 for IERC20; 
+    using SafeERC20 for IERC20;
 
     address public usdtAddress;
     address public paradoxAddress;
@@ -25,7 +24,7 @@ contract NFTPresale is Ownable {
 
     uint256 constant paradoxDecimals = 10 ** 18;
     uint256 constant usdtDecimals = 10 ** 6;
-    
+
     uint256 constant exchangeRate = 8;
     uint256 constant exchangeRatePrecision = 100;
 
@@ -41,7 +40,7 @@ contract NFTPresale is Ownable {
         uint256 startTime;
     }
 
-    constructor (address _usdt, address _paradox, bytes32 _root) {
+    constructor(address _usdt, address _paradox, bytes32 _root) {
         usdtAddress = _usdt;
         usdt = IERC20(_usdt);
 
@@ -66,10 +65,11 @@ contract NFTPresale is Ownable {
         require(buyAmount <= maxUSD, "Wrong amount");
 
         // get exchange rate to para
-        uint256 rate = buyAmount * exchangeRatePrecision * paradoxDecimals / (usdtDecimals * exchangeRate);
+        uint256 rate = (buyAmount * exchangeRatePrecision * paradoxDecimals) /
+            (usdtDecimals * exchangeRate);
         require(rate <= para.balanceOf(address(this)), "Low balance");
         // give user 10% now
-        uint256 rateNow = rate * 10 / 100;
+        uint256 rateNow = (rate * 10) / 100;
         uint256 vestingRate = rate - rateNow;
 
         if (locks[destination].total == 0) {
@@ -85,10 +85,14 @@ contract NFTPresale is Ownable {
             if (buyAmount == maxUSD) _claimed[destination] = true;
         } else {
             // at this point, the user still has some pending amount they can claim
-            require(buyAmount + locks[destination].paid <= locks[destination].max, "Too Much");
+            require(
+                buyAmount + locks[destination].paid <= locks[destination].max,
+                "Too Much"
+            );
 
             locks[destination].total += vestingRate;
-            if (buyAmount + locks[destination].paid == locks[destination].max) _claimed[destination] = true;
+            if (buyAmount + locks[destination].paid == locks[destination].max)
+                _claimed[destination] = true;
             locks[destination].paid += buyAmount;
         }
 
@@ -117,7 +121,7 @@ contract NFTPresale is Ownable {
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
         uint256 monthlyRelease = userLock.total / 9;
-        
+
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             release += monthlyRelease;
@@ -126,13 +130,13 @@ contract NFTPresale is Ownable {
         return release - userLock.debt;
     }
 
-   function claimVested() external {
+    function claimVested() external {
         Lock storage userLock = locks[msg.sender];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice userlock.total = 90%, 10% released each month. */
         uint256 monthlyRelease = userLock.total / 9;
-        
+
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
             release += monthlyRelease;
@@ -143,7 +147,7 @@ contract NFTPresale is Ownable {
         para.safeTransfer(msg.sender, reward);
     }
 
-    function updateRoot(bytes32 _root) external onlyOwner{
+    function updateRoot(bytes32 _root) external onlyOwner {
         root = _root;
     }
 
@@ -151,21 +155,26 @@ contract NFTPresale is Ownable {
         usdt.safeTransfer(msg.sender, usdt.balanceOf(address(this)));
     }
 
-
     /** @notice EMERGENCY FUNCTIONS */
 
     function updateClaimed(address _user) external onlyOwner {
         _claimed[_user] = !_claimed[_user];
     }
 
-    function updateUserLock(address _user, uint256 _total, uint256 _max, uint256 _paid, uint256 _startTime) external onlyOwner {
+    function updateUserLock(
+        address _user,
+        uint256 _total,
+        uint256 _max,
+        uint256 _paid,
+        uint256 _startTime
+    ) external onlyOwner {
         Lock storage lock = locks[_user];
         lock.total = _total;
         lock.max = _max;
         lock.paid = _paid;
         lock.startTime = _startTime;
     }
-    
+
     function withdrawETH() external onlyOwner {
         address payable to = payable(msg.sender);
         to.transfer(address(this).balance);
@@ -174,5 +183,4 @@ contract NFTPresale is Ownable {
     function withdrawParadox() external onlyOwner {
         para.safeTransfer(msg.sender, para.balanceOf(address(this)));
     }
-
 }

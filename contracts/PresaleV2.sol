@@ -39,7 +39,11 @@ contract ParadoxPresaleV2 is Ownable {
         uint256 amountNow,
         bytes32[] calldata merkleProof
     ) public view returns (bool) {
-        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(destination, amountVested, amountNow))));
+        bytes32 node = keccak256(
+            bytes.concat(
+                keccak256(abi.encode(destination, amountVested, amountNow))
+            )
+        );
         return
             !_claimed[destination] &&
             MerkleProof.verify(merkleProof, root, node);
@@ -51,7 +55,10 @@ contract ParadoxPresaleV2 is Ownable {
         uint256 amountNow,
         bytes32[] calldata merkleProof
     ) external {
-        require(canClaim(destination, amountVested, amountNow, merkleProof), "Invalid Claim");
+        require(
+            canClaim(destination, amountVested, amountNow, merkleProof),
+            "Invalid Claim"
+        );
 
         _claimed[destination] = true;
 
@@ -70,7 +77,7 @@ contract ParadoxPresaleV2 is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -78,7 +85,7 @@ contract ParadoxPresaleV2 is Ownable {
                 if (release >= userLock.total) {
                     release = userLock.total;
                     break;
-                } 
+                }
                 release += monthlyRelease;
             }
         }
@@ -88,12 +95,14 @@ contract ParadoxPresaleV2 is Ownable {
         para.transfer(msg.sender, reward);
     }
 
-    function pendingVestedParadox(address _user) external view returns(uint256) {
+    function pendingVestedParadox(
+        address _user
+    ) external view returns (uint256) {
         Lock memory userLock = locks[_user];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -101,7 +110,7 @@ contract ParadoxPresaleV2 is Ownable {
                 if (release >= userLock.total) {
                     release = userLock.total;
                     break;
-                }                
+                }
                 release += monthlyRelease;
             }
         }
@@ -111,7 +120,7 @@ contract ParadoxPresaleV2 is Ownable {
 
     /** @notice EMERGENCY FUNCTIONS */
 
-    function updateRoot(bytes32 _root) external onlyOwner{
+    function updateRoot(bytes32 _root) external onlyOwner {
         root = _root;
     }
 
@@ -119,7 +128,12 @@ contract ParadoxPresaleV2 is Ownable {
         _claimed[_user] = !_claimed[_user];
     }
 
-    function updateUserLock(address _user, uint256 _total, uint256 _debt, uint256 _startTime) external onlyOwner {
+    function updateUserLock(
+        address _user,
+        uint256 _total,
+        uint256 _debt,
+        uint256 _startTime
+    ) external onlyOwner {
         Lock storage lock = locks[_user];
         lock.total = _total;
         lock.debt = _debt;

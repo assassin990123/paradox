@@ -80,9 +80,7 @@ contract Utilities is AccessControl {
         uint256 newStakeShares,
         uint256 newPooledDay,
         uint256 newStakedDays
-    )
-        internal
-    {
+    ) internal {
         stakeListRef.push(
             Stake(
                 newStakeId,

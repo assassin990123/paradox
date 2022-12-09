@@ -28,7 +28,14 @@ contract ParadoxTimelock is Ownable {
         @param _startTime The time in seconds when the timelock starts
         @param _denominator The denominator used to calculate the amount of tokens to claim
      */
-    constructor(address _paradox, uint256 _cliff, uint256 _rate, uint256 _total, uint256 _startTime, uint256 _denominator) {
+    constructor(
+        address _paradox,
+        uint256 _cliff,
+        uint256 _rate,
+        uint256 _total,
+        uint256 _startTime,
+        uint256 _denominator
+    ) {
         paradox = IERC20(_paradox);
         cliff = _cliff;
         rate = _rate;
@@ -38,14 +45,13 @@ contract ParadoxTimelock is Ownable {
     }
 
     function claim(address _recipient) external onlyOwner {
-        if(block.timestamp < startTime) revert NotStarted();
+        if (block.timestamp < startTime) revert NotStarted();
 
-        uint256 elapsed = block.timestamp - startTime;
-        uint256 months = elapsed / 30 days;
-        
+        uint256 months = (block.timestamp - startTime) / 30 days;
+
         if (months <= cliff) revert CliffNotDone();
 
-        uint256 amount = rate * months * total / denominator;
+        uint256 amount = (rate * months * total) / denominator;
 
         unchecked {
             amount = amount - claimed;
@@ -60,14 +66,14 @@ contract ParadoxTimelock is Ownable {
     }
 
     function pending() external view returns (uint256) {
-        if(block.timestamp < startTime) return 0;
+        if (block.timestamp < startTime) return 0;
 
-        uint256 elapsed = block.timestamp - startTime;
-        uint256 months = elapsed / 30 days;
-        
+        uint256 months = (block.timestamp - startTime) / 30 days;
+
+
         if (months <= cliff) return 0;
 
-        uint256 amount = rate * months * total / denominator;
+        uint256 amount = (rate * months * total) / denominator;
 
         unchecked {
             amount = amount - claimed;

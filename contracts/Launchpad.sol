@@ -15,7 +15,7 @@ contract Launchpad is Ownable {
     // final merkle hash in merkle tree
     bytes32 public root;
     // paradox token buffer
-    uint256 constant internal PARADOX_DECIMALS = 10 ** 18;
+    uint256 internal constant PARADOX_DECIMALS = 10 ** 18;
     // tracking for whitelisted user vesting data
     mapping(address => Lock) public locks;
     // vesting data definition
@@ -38,7 +38,9 @@ contract Launchpad is Ownable {
         uint256 amount,
         bytes32[] calldata merkleProof
     ) public view returns (bool) {
-        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(destination, amount))));
+        bytes32 node = keccak256(
+            bytes.concat(keccak256(abi.encode(destination, amount)))
+        );
         return
             !_claimed[destination] &&
             MerkleProof.verify(merkleProof, root, node);
@@ -54,7 +56,7 @@ contract Launchpad is Ownable {
         _claimed[destination] = true;
 
         // give user 20% now
-        uint256  amountNow = amount * 20 / 100;
+        uint256 amountNow = (amount * 20) / 100;
         uint256 vestingRate = amount - amountNow;
 
         locks[destination] = Lock({
@@ -72,7 +74,7 @@ contract Launchpad is Ownable {
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -91,12 +93,14 @@ contract Launchpad is Ownable {
         para.transfer(msg.sender, reward);
     }
 
-    function pendingVestedParadox(address _user) external view returns(uint256) {
+    function pendingVestedParadox(
+        address _user
+    ) external view returns (uint256) {
         Lock memory userLock = locks[_user];
 
         uint256 monthsPassed = (block.timestamp - userLock.startTime) / 4 weeks;
         /** @notice 5% released each month after 2 months */
-        uint256 monthlyRelease = userLock.total * 5 / 100;
+        uint256 monthlyRelease = (userLock.total * 5) / 100;
 
         uint256 release;
         for (uint256 i = 0; i < monthsPassed; i++) {
@@ -104,7 +108,7 @@ contract Launchpad is Ownable {
                 if (release >= userLock.total) {
                     release == userLock.total;
                     break;
-                }             
+                }
                 release += monthlyRelease;
             }
         }
@@ -114,7 +118,7 @@ contract Launchpad is Ownable {
 
     /** @notice EMERGENCY FUNCTIONS */
 
-    function updateRoot(bytes32 _root) external onlyOwner{
+    function updateRoot(bytes32 _root) external onlyOwner {
         root = _root;
     }
 
@@ -122,7 +126,12 @@ contract Launchpad is Ownable {
         _claimed[_user] = !_claimed[_user];
     }
 
-    function updateUserLock(address _user, uint256 _total, uint256 _debt, uint256 _startTime) external onlyOwner {
+    function updateUserLock(
+        address _user,
+        uint256 _total,
+        uint256 _debt,
+        uint256 _startTime
+    ) external onlyOwner {
         Lock storage lock = locks[_user];
         lock.total = _total;
         lock.debt = _debt;

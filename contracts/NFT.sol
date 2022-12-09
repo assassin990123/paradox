@@ -9,7 +9,14 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, AccessControl, ReentrancyGuard {
+contract Paradox is
+    ERC721,
+    ERC721Enumerable,
+    ERC721URIStorage,
+    ERC721Burnable,
+    AccessControl,
+    ReentrancyGuard
+{
     using Counters for Counters.Counter;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -20,7 +27,10 @@ contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, 
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function safeMint(address to, string memory uri) public onlyRole(MINTER_ROLE) nonReentrant {
+    function safeMint(
+        address to,
+        string memory uri
+    ) public onlyRole(MINTER_ROLE) nonReentrant {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
@@ -29,27 +39,29 @@ contract Paradox is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, 
 
     // The following functions are overrides required by Solidity.
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
-        internal
-        override(ERC721, ERC721Enumerable)
-    {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+    function _burn(
+        uint256 tokenId
+    ) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(bytes4 interfaceId)
+    function supportsInterface(
+        bytes4 interfaceId
+    )
         public
         view
         override(ERC721, ERC721Enumerable, AccessControl)
