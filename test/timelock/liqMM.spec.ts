@@ -96,31 +96,6 @@ describe("Timelock", function () {
       "ERC20: transfer amount exceeds balance"
     );
   });
-  it("Should work for P2E", async function () {
-    // total: 200M
-    // 3 month cliff
-    // 2% per month
-  });
-  it("Should work for staking", async function () {
-    // total: 147M
-    // 3 month cliff
-    // 2% per month
-  });
-  it("Should work for RND", async function () {
-    // total: 50M
-    // 6 month cliff
-    // 5.55% every 3 months
-  });
-  it("Should work for Ecosystem", async function () {
-    // total: 100M
-    // 6 month cliff
-    // 5.55% every 3 months
-  });
-  it("Should work for Advisors", async function () {
-    // total: 31.5M
-    // 12 month cliff
-    // 5.55% every 3 months
-  });
   it("Should work for Seed", async function () {
     // total: 116M
     // 12 month cliff
