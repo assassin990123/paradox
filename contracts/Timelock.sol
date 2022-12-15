@@ -1,4 +1,4 @@
-// SPX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,7 +11,6 @@ contract ParadoxTimelock is Ownable {
     uint256 public immutable releaseStart;
     uint256 public immutable rate;
     uint256 public immutable total;
-    uint256 public immutable startTime;
     uint256 public immutable denominator;
     uint256 public immutable period;
 
@@ -45,7 +44,6 @@ contract ParadoxTimelock is Ownable {
         releaseStart = _startTime + (_cliff * 30 days);
         rate = _rate;
         total = _total;
-        startTime = _startTime;
         denominator = _denominator;
         period = _period * 1 days;
     }
@@ -70,7 +68,7 @@ contract ParadoxTimelock is Ownable {
     function pending() external view returns (uint256) {
         if (block.timestamp < releaseStart) return 0;
 
-        uint256 months = ((block.timestamp - startTime) / period) + 1;
+        uint256 months = ((block.timestamp - releaseStart) / period) + 1;
 
         uint256 amount = rate * months * total / denominator;
 

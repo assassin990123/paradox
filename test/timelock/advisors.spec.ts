@@ -38,6 +38,10 @@ describe("Timelock", function () {
     const monthlyBalance = 1748250;
 
     for (let i = 0; i < 18; i++) {
+      expect(await timelock.pending()).to.equal(
+        ethers.utils.parseEther(monthlyBalance.toString())
+      );
+
       await timelock.release(recipient.address);
 
       expect(await paradox.balanceOf(recipient.address)).to.equal(
