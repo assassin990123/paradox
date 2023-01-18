@@ -96,9 +96,4 @@ describe("Timelock", function () {
       "ERC20: transfer amount exceeds balance"
     );
   });
-  it("Should work for Seed", async function () {
-    // total: 116M
-    // 12 month cliff
-    // 5% every month
-  });
 });

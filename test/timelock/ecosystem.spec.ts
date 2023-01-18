@@ -25,7 +25,7 @@ describe("Timelock", function () {
       ethers.utils.parseEther("100000000"), // total
       1668686400, // start
       10000, // denominator
-      30 // period
+      90 // period
     );
 
     await network.provider.send("evm_increaseTime", [6 * 2419200]);
@@ -47,7 +47,7 @@ describe("Timelock", function () {
       const latestBlock = await ethers.provider.getBlock("latest");
 
       await network.provider.send("evm_setNextBlockTimestamp", [
-        latestBlock.timestamp + 2592000,
+        latestBlock.timestamp + 3 * 2592000,
       ]);
       await network.provider.send("evm_mine");
     }

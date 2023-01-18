@@ -14,7 +14,7 @@ describe("Timelock", function () {
     paradox = await ethers.getContractFactory("ParadoxToken");
     paradox = await paradox.deploy();
   });
-  it("Should work for Marketing", async function () {
+  it("Should work for Seed", async function () {
     // total: 116M
     // 12 month cliff
     // 5% every month
